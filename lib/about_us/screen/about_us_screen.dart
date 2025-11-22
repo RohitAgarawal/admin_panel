@@ -203,14 +203,9 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
                           value: selectedIconName.isEmpty ? null : selectedIconName,
                           decoration: InputDecoration(
                             labelText: 'Select Icon',
-                            // prefixIcon: selectedIconName.isNotEmpty
-                            //     ? Icon(
-                            //         _availableIcons.firstWhere(
-                            //           (icon) => icon['name'] == selectedIconName,
-                            //           orElse: () => _availableIcons.first,
-                            //         )['icon'],
-                            //       )
-                            //     : const Icon(Icons.category),
+                            prefixIcon: selectedIconName.isNotEmpty
+                                ? null
+                                : const Icon(Icons.category),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -310,10 +305,7 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
       },
     );
 
-    // Dispose temporary controllers
-    titleController.dispose();
-    descriptionController.dispose();
-
+    // Handle result first
     if (result != null) {
       setState(() {
         if (isEditing) {
@@ -331,6 +323,12 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
         }
       });
     }
+
+    // Dispose temporary controllers after a delay to ensure dialog is fully closed
+    Future.delayed(const Duration(milliseconds: 300), () {
+      titleController.dispose();
+      descriptionController.dispose();
+    });
   }
 
   void _removeValue(int index) {

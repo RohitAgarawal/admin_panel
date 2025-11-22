@@ -10,6 +10,7 @@ import '../../model/user_model/user_model.dart';
 import '../../model/user_model/user_tab_model.dart';
 import '../../network_connection/apis.dart';
 import '../../network_connection/constants.dart';
+
 class UserProvider extends ChangeNotifier {
   bool _isLoading = false;
 
@@ -18,6 +19,9 @@ class UserProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String _userFName = "";
   String get userFName => _userFName;
+
+  String _registrationDate = "";
+  String get registrationDate => _registrationDate;
 
   String _userMName = "";
   String get userMName => _userMName;
@@ -79,7 +83,7 @@ class UserProvider extends ChangeNotifier {
 
   String _userAssignPin = "";
   String get userAssignPin => _userAssignPin;
-// Boolean flags
+  // Boolean flags
   bool _isVerified = false;
   bool get isVerified => _isVerified;
 
@@ -98,7 +102,6 @@ class UserProvider extends ChangeNotifier {
   bool _isActive = false;
   bool get isActive => _isActive;
 
-
   //read or write list
   List<String> _userReadData = [];
   List<String> get userReadDataList => _userReadData;
@@ -109,7 +112,6 @@ class UserProvider extends ChangeNotifier {
   List<UserTabModel> _userCategories = [];
   List<UserTabModel> get userCategories => _userCategories;
 
-
   String _selectedCategory = "";
   String get getSelectedCategory => _selectedCategory;
 
@@ -119,12 +121,13 @@ class UserProvider extends ChangeNotifier {
   List<UserModel> _allUsers = [];
   List<UserModel> get allUsers => _allUsers;
 
-  String _selectedStatus = '';            // '', 'Pending', 'Disabled', 'Deleted'
+  String _selectedStatus = ''; // '', 'Pending', 'Disabled', 'Deleted'
   String get selectedStatus => _selectedStatus;
   void setStatus(String status) {
     _selectedStatus = status;
     notifyListeners();
   }
+
   void setCategories(List<UserTabModel> categories) {
     _userCategories = categories;
     notifyListeners();
@@ -134,6 +137,7 @@ class UserProvider extends ChangeNotifier {
     _selectedCategory = category;
     notifyListeners();
   }
+
   void setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
@@ -151,7 +155,7 @@ class UserProvider extends ChangeNotifier {
     String token = await AdminSharedPreferences().getAuthToken();
     var headers = {
       'Content-Type': 'application/json',
-      'Authorization' : 'Bearer $token'
+      'Authorization': 'Bearer $token',
     };
     var request = http.Request(
       'GET',
@@ -163,12 +167,35 @@ class UserProvider extends ChangeNotifier {
     final data = json.decode(responseBody);
 
     if (response.statusCode == 200) {
-      _userCategories = (data['userCategories'] as List)
+      List<UserTabModel> apiCategories = (data['userCategories'] as List)
           .map((e) => UserTabModel.fromJson(e))
           .toList();
 
+      List<String> defaults = ['A', 'B', 'α', 'β'];
+      List<UserTabModel> finalCategories = [];
+
+      for (var def in defaults) {
+        var existing = apiCategories.firstWhere(
+          (element) => element.category == def,
+          orElse: () => UserTabModel(category: def, count: 0),
+        );
+        finalCategories.add(existing);
+      }
+
+      // Add any other categories returned by API that are not in defaults
+      for (var cat in apiCategories) {
+        if (!defaults.contains(cat.category)) {
+          finalCategories.add(cat);
+        }
+      }
+
+      _userCategories = finalCategories;
+
       int totalCount = _userCategories.fold(0, (sum, item) => sum + item.count);
-      _userCategories.insert(0, UserTabModel(category: 'All', count: totalCount)); // Add "All" category
+      _userCategories.insert(
+        0,
+        UserTabModel(category: 'All', count: totalCount),
+      ); // Add "All" category
 
       notifyListeners(); // update UI
       print("Categories: $_userCategories");
@@ -177,7 +204,6 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-
   Future<void> getUser({String category = ""}) async {
     _isLoading = true;
     notifyListeners();
@@ -185,11 +211,13 @@ class UserProvider extends ChangeNotifier {
       String token = await AdminSharedPreferences().getAuthToken();
       var headers = {
         'Content-Type': 'application/json',
-        'Authorization' : 'Bearer $token'
+        'Authorization': 'Bearer $token',
       };
       var request = http.Request(
         'GET',
-        Uri.parse('${Apis.BASE_URL}/admin/get_user_by_userCategory?userCategory=$_selectedCategory'),
+        Uri.parse(
+          '${Apis.BASE_URL}/admin/get_user_by_userCategory?userCategory=$_selectedCategory',
+        ),
       );
       request.headers.addAll(headers);
       http.StreamedResponse response = await request.send();
@@ -200,11 +228,17 @@ class UserProvider extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         List<dynamic> usersJson = data['users'];
-        List<UserModel> list = usersJson.map((e) => UserModel.fromJson(e)).toList();
+        List<UserModel> list = usersJson
+            .map((e) => UserModel.fromJson(e))
+            .toList();
         if (_statusFilter == 'Pending') {
-          list = list.where((u) =>
-          (u.category == 'A' || u.category == 'α') ? !u.isPinVerified : !u.isOtpVerified
-          ).toList();
+          list = list
+              .where(
+                (u) => (u.category == 'A' || u.category == 'α')
+                    ? !u.isPinVerified
+                    : !u.isOtpVerified,
+              )
+              .toList();
         } else if (_statusFilter == 'Disabled') {
           list = list.where((u) => !u.isActive).toList();
         } else if (_statusFilter == 'Deleted') {
@@ -212,8 +246,7 @@ class UserProvider extends ChangeNotifier {
         }
 
         _usersByCategory = list;
-      }
-      else {
+      } else {
         print("Error: ${response.reasonPhrase}");
       }
     } catch (e) {
@@ -224,14 +257,14 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-  void clearUserData(){
+  void clearUserData() {
     _userId = "";
     _userFName = "";
     _userMName = "";
     _userLName = "";
     _userGender = "";
     _userDOB = "";
-    _userEmail ="";
+    _userEmail = "";
     _userPhone = "";
     _userStreet1 = "";
     _userStreet2 = "";
@@ -251,13 +284,12 @@ class UserProvider extends ChangeNotifier {
     _isBlocked = false;
     _isPinVerified = false;
     _isOtpVerified = false;
-    _isActive =  true;
-    _userAssignPin ="";
+    _isActive = true;
+    _userAssignPin = "";
     _userReadData = [];
     _userWriteData = [];
     notifyListeners();
   }
-
 
   Future<void> fetchUserData(String userId) async {
     _userId = userId;
@@ -266,7 +298,7 @@ class UserProvider extends ChangeNotifier {
     _userLName = "";
     _userGender = "";
     _userDOB = "";
-    _userEmail ="";
+    _userEmail = "";
     _userPhone = "";
     _userStreet1 = "";
     _userStreet2 = "";
@@ -286,8 +318,8 @@ class UserProvider extends ChangeNotifier {
     _isBlocked = false;
     _isPinVerified = false;
     _isOtpVerified = false;
-    _isActive =  true;
-    _userAssignPin ="";
+    _isActive = true;
+    _userAssignPin = "";
     _userReadData = [];
     _userWriteData = [];
     notifyListeners();
@@ -298,7 +330,7 @@ class UserProvider extends ChangeNotifier {
       String token = await AdminSharedPreferences().getAuthToken();
       var headers = {
         'Content-Type': 'application/json',
-        'Authorization' : 'Bearer $token'
+        'Authorization': 'Bearer $token',
       };
       var request = http.Request('GET', uri);
       request.headers.addAll(headers);
@@ -314,24 +346,61 @@ class UserProvider extends ChangeNotifier {
 
         // Assign data...
         _userId = userId;
-        _userFName = (userData['fName'] as List).isNotEmpty ? userData['fName'].last : "";
-        _userMName = (userData['mName'] as List).isNotEmpty ? userData['mName'].last : "";
-        _userLName = (userData['lName'] as List).isNotEmpty ? userData['lName'].last : "";
-        _userGender = (userData['gender'] as List).isNotEmpty ? userData['gender'].last : "";
-        _userDOB = (userData['DOB'] as List).isNotEmpty ? userData['DOB'].last : "";
+        _userFName = (userData['fName'] as List).isNotEmpty
+            ? userData['fName'].last
+            : "";
+        _registrationDate = userData['createdAt'].toString().isNotEmpty
+            ? userData['createdAt'].toString()
+            : "";
+        _userMName = (userData['mName'] as List).isNotEmpty
+            ? userData['mName'].last
+            : "";
+        _userLName = (userData['lName'] as List).isNotEmpty
+            ? userData['lName'].last
+            : "";
+        _userGender = (userData['gender'] as List).isNotEmpty
+            ? userData['gender'].last
+            : "";
+        _userDOB = (userData['DOB'] as List).isNotEmpty
+            ? userData['DOB'].last
+            : "";
         _userEmail = userData['email'] ?? "";
-        _userPhone = (userData['phone'] as List).isNotEmpty ? userData['phone'].last : "";
-        _userStreet1 = (userData['street1'] as List).isNotEmpty ? userData['street1'].last : "";
-        _userStreet2 = (userData['street2'] as List).isNotEmpty ? userData['street2'].last : "";
-        _userState = (userData['state'] as List).isNotEmpty ? userData['state'].last : "";
-        _userDistrict = (userData['city'] as List).isNotEmpty ? userData['city'].last : "";
-        _userArea = (userData['area'] as List).isNotEmpty ? userData['area'].last : "";
-        _userPinCode = (userData['pinCode'] as List).isNotEmpty ? userData['pinCode'].last : "";
-        _userAadhaarNumber = (userData['aadharNumber'] as List).isNotEmpty ? userData['aadharNumber'].last : "";
-        _uIdNumber = (userData['uIdNumber'] as List).isNotEmpty ? userData['uIdNumber'].last : "";
-        _userProfileImage = (userData['profileImage'] as List).isNotEmpty ? Apis.BASE_URL_IMAGE + userData['profileImage'].last : "";
-        _userAadhaarFront = (userData['aadhaarCardImage1'] as List).isNotEmpty ? Apis.BASE_URL_IMAGE + userData['aadhaarCardImage1'].last : "";
-        _userAadhaarBack = (userData['aadhaarCardImage2'] as List).isNotEmpty ? Apis.BASE_URL_IMAGE + userData['aadhaarCardImage2'].last : "";
+        _userPhone = (userData['phone'] as List).isNotEmpty
+            ? userData['phone'].last
+            : "";
+        _userStreet1 = (userData['street1'] as List).isNotEmpty
+            ? userData['street1'].last
+            : "";
+        _userStreet2 = (userData['street2'] as List).isNotEmpty
+            ? userData['street2'].last
+            : "";
+        _userState = (userData['state'] as List).isNotEmpty
+            ? userData['state'].last
+            : "";
+        _userDistrict = (userData['city'] as List).isNotEmpty
+            ? userData['city'].last
+            : "";
+        _userArea = (userData['area'] as List).isNotEmpty
+            ? userData['area'].last
+            : "";
+        _userPinCode = (userData['pinCode'] as List).isNotEmpty
+            ? userData['pinCode'].last
+            : "";
+        _userAadhaarNumber = (userData['aadharNumber'] as List).isNotEmpty
+            ? userData['aadharNumber'].last
+            : "";
+        _uIdNumber = (userData['uIdNumber'] as List).isNotEmpty
+            ? userData['uIdNumber'].last
+            : "";
+        _userProfileImage = (userData['profileImage'] as List).isNotEmpty
+            ? Apis.BASE_URL_IMAGE + userData['profileImage'].last
+            : "";
+        _userAadhaarFront = (userData['aadhaarCardImage1'] as List).isNotEmpty
+            ? Apis.BASE_URL_IMAGE + userData['aadhaarCardImage1'].last
+            : "";
+        _userAadhaarBack = (userData['aadhaarCardImage2'] as List).isNotEmpty
+            ? Apis.BASE_URL_IMAGE + userData['aadhaarCardImage2'].last
+            : "";
         _userOccupationId = userData['occupationId']["name"] ?? "";
         _userCategory = userData['userCategory'] ?? "";
         _userRole = userData['role'] ?? "";
@@ -353,8 +422,7 @@ class UserProvider extends ChangeNotifier {
         }
 
         notifyListeners();
-      }
-      else {
+      } else {
         print("Error: ${data['message'] ?? response.reasonPhrase}");
       }
     } catch (e) {
@@ -369,7 +437,7 @@ class UserProvider extends ChangeNotifier {
     String token = await AdminSharedPreferences().getAuthToken();
     var headers = {
       'Content-Type': 'application/json',
-      'Authorization' : 'Bearer $token'
+      'Authorization': 'Bearer $token',
     };
     var request = http.Request(
       'DELETE',
@@ -411,9 +479,12 @@ class UserProvider extends ChangeNotifier {
     String token = await AdminSharedPreferences().getAuthToken();
     var headers = {
       'Content-Type': 'application/json',
-      'Authorization' : 'Bearer $token'
+      'Authorization': 'Bearer $token',
     };
-    var request = http.Request('GET', Uri.parse('${Apis.BASE_URL}/admin/get_all_user'));
+    var request = http.Request(
+      'GET',
+      Uri.parse('${Apis.BASE_URL}/admin/get_all_user'),
+    );
     request.headers.addAll(headers);
     http.StreamedResponse response = await request.send();
     String res = await response.stream.bytesToString();
@@ -436,9 +507,11 @@ class UserProvider extends ChangeNotifier {
       String token = await AdminSharedPreferences().getAuthToken();
       var headers = {
         'Content-Type': 'application/json',
-        'Authorization' : 'Bearer $token'
+        'Authorization': 'Bearer $token',
       };
-      final url = Uri.parse('${Apis.BASE_URL}/admin/user_active_inActive?userId=$userId');
+      final url = Uri.parse(
+        '${Apis.BASE_URL}/admin/user_active_inActive?userId=$userId',
+      );
       final request = http.Request('POST', url);
       request.headers.addAll(headers);
       final response = await request.send();
@@ -468,5 +541,4 @@ class UserProvider extends ChangeNotifier {
       setLoading(false); // Reset loading state when done
     }
   }
-
 }

@@ -1,5 +1,3 @@
-import 'apis.dart';
-
 class Constants {
   static const String ADMIN_LOGIN = "/admin/login";
   static const String PRODUCT_TYPE = '/admin/get_productS_Type';
@@ -13,6 +11,11 @@ class Constants {
   static const IMAGE_URL = '';
   static const GET_FEATURE_REQUEST = '/feature-request/admin/list';
   static  UPDATE_FEATURE_REQUEST_STATUS(String featureRequestId) => '/feature-request/admin/status/$featureRequestId';
+
+  static const UPLOAD_APP_GUIDE_VIDEO = '/app-guide-video/upload';
+  static const GET_APP_GUIDE_VIDEO = '/app-guide-video/get-app-guide-video';
+  static const APP_GUIDE_VIDEO_VISIBILITY = '/app-guide-video/visibility'; // base path; use with /:id
+  static DELETE_APP_GUIDE_VIDEO(String id) => '/app-guide-video/delete/$id'; // base path; use with /:id
 }
 
 class Url {

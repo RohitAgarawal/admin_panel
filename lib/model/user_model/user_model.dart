@@ -199,6 +199,7 @@ class UserModel {
       street2: extractLast(json['street2']),
     );
   }
+  
 }
 
 

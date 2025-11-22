@@ -5,6 +5,7 @@ import 'package:admin_panel/screens/rating.dart';
 import 'package:flutter/material.dart';
 
 import '../../access_code/access_code.dart';
+import '../../app_use_guide/screen/app_use_guide_screen.dart';
 import '../../dashboard.dart';
 import '../../product/all_product_get.dart';
 import '../../report/report_screen.dart';
@@ -30,6 +31,7 @@ class TabProvider with ChangeNotifier {
       case 7: selectedWidget = Rating(); break;
       case 8: selectedWidget = Center(child: Text("Chat Under Development"),); break;
       case 9: selectedWidget = AboutUsScreen(); break;
+      case 10: selectedWidget = AppUseGuideScreen(); break;
       default: selectedWidget = Dashboard();
     }
 

@@ -229,18 +229,36 @@ class _HomeScreenState extends State<HomeScreen> {
                         }
                     ),
                     ListTile(
+                        leading: Icon(
+                          Icons.menu_book,
+                          color: tabProvider.selectedIndex == 10 ? Colors.green : Colors.black,
+                        ),
+                        title: Text(
+                          "App Guide",
+                          style: TextStyle(
+                            color: tabProvider.selectedIndex == 10 ? Colors.green : Colors.black,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        selected: tabProvider.selectedIndex == 10,
+                        selectedTileColor: Colors.green.shade100,
+                        onTap: (){
+                          tabProvider.setSelectedIndex(10);
+                        }
+                    ),
+                    ListTile(
                       leading: Icon(
                         Icons.logout,
-                        color: tabProvider.selectedIndex == 10 ? Colors.green : Colors.black,
+                        color: tabProvider.selectedIndex == 11 ? Colors.green : Colors.black,
                       ),
                       title: Text(
                         "Logout",
                         style: TextStyle(
-                          color: tabProvider.selectedIndex == 10 ? Colors.green : Colors.black,
+                          color: tabProvider.selectedIndex == 11 ? Colors.green : Colors.black,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      selected: tabProvider.selectedIndex == 10,
+                      selected: tabProvider.selectedIndex == 11,
                       selectedTileColor: Colors.green.shade100,
                       onTap: (){
                         _logout();

@@ -22,6 +22,7 @@ import 'package:admin_panel/user/user_Screen.dart';
 import 'package:admin_panel/user/user_details_screen.dart';
 import 'package:get/get_navigation/src/routes/get_route.dart';
 
+import '../app_use_guide/screen/app_use_guide_screen.dart';
 import '../product/product_details_screen/property/property_details_screen.dart';
 
 class Routs{
@@ -52,5 +53,6 @@ class Routs{
     GetPage(name: AppVersion.routeName, page: () => AppVersion()),
     GetPage(name: FeatureRequestScreen.routeName, page: () => FeatureRequestScreen()),
     GetPage(name: AboutUsScreen.routeName, page: () => AboutUsScreen()),
+    GetPage(name: AppUseGuideScreen.routeName, page: () => AppUseGuideScreen()),
   ];
 }

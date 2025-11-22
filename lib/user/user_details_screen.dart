@@ -1,5 +1,6 @@
 import 'package:admin_panel/provider/product_provider/product_provider.dart';
 import 'package:admin_panel/provider/user_provider/user_provider.dart';
+import 'package:admin_panel/utils/date_formater.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
@@ -39,6 +40,8 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
       Provider.of<ProductProvider>(context, listen: false).getProductByUserId(userId);
     });
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -194,7 +197,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
 
                       if(userProvider.userCategory == "A")...[InfoRow(title: "User Pin", value: userProvider.userAssignPin)]else...[
                       ],
-
+                      InfoRow(title: "Registration date", value:DateFormater.formatDate(userProvider.registrationDate)  ),
                     ],
                   ),
                 ),
@@ -432,8 +435,8 @@ class InfoRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Expanded(flex: 2, child: Text("$title:", style: const TextStyle(fontWeight: FontWeight.w600))),
-          Expanded(flex: 3, child: Text(value)),
+          Expanded(flex: 2, child: SelectableText("$title:", style: const TextStyle(fontWeight: FontWeight.w600))),
+          Expanded(flex: 3, child: SelectableText(value)),
         ],
       ),
     );

@@ -1,4 +1,5 @@
 
+import 'package:admin_panel/app_use_guide/provider/app_use_guide_provider.dart';
 import 'package:admin_panel/app_version/app_version_provider.dart';
 import 'package:admin_panel/feature_request/provider/feature_request_provider.dart';
 import 'package:admin_panel/provider/access_code_provider/access_code_provider.dart';
@@ -29,6 +30,7 @@ class ProviderList {
     ChangeNotifierProvider(create: (_) => RateProvider()),
     ChangeNotifierProvider(create: (_) => FeatureRequestProvider()),
     ChangeNotifierProvider(create: (_) => AboutUsProvider()),
+    ChangeNotifierProvider(create: (_) => AppUseGuideProvider()),
 
   ];
 }

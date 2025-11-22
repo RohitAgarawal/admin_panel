@@ -62,7 +62,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                         mainAxisAlignment: MainAxisAlignment.start,
                         //crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Text(
+                          SelectableText(
                             "Login as Admin",
                             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.bold,
