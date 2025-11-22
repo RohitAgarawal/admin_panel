@@ -4,7 +4,11 @@ import 'package:admin_panel/product/all_product_get.dart';
 import 'package:admin_panel/provider/tab_provider/tab_provider.dart';
 import 'package:admin_panel/report/report_screen.dart';
 import 'package:admin_panel/user/user_Screen.dart';
-import 'package:animations/animations.dart';
+import 'package:admin_panel/about_us/screen/about_us_screen.dart';
+import 'package:admin_panel/app_version/app_version.dart';
+import 'package:admin_panel/feature_request/feature_request_screen.dart';
+import 'package:admin_panel/screens/rating.dart';
+import 'package:admin_panel/app_use_guide/screen/app_use_guide_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -22,292 +26,296 @@ class _HomeScreenState extends State<HomeScreen> {
   // int selectedIndex = 0;
   // Widget selectedWidget = Dashboard();
 
+  final List<Widget> _pages = [
+    const Dashboard(),
+    const AllProductGet(),
+    const UserScreen(),
+    const AccessCode(),
+    const ReportScreen(),
+    const AppVersion(),
+    const FeatureRequestScreen(),
+    const Rating(),
+    const Center(child: Text("Chat Under Development")),
+    const AboutUsScreen(),
+    const AppUseGuideScreen(),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Row(
-        children: [
-          Consumer<TabProvider>(
-            builder: (context,tabProvider, child) {
-              return Drawer(
-                backgroundColor: Colors.white,
-                elevation: 2,
-                child: Column(
-                  spacing: 10,
-                  children: [
-                    SizedBox(
-                      height: 150,
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Colors.green,
-                        child: Icon(
-                          Icons.person,
-                          size: 60,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    ListTile(
-                      leading: Icon(
-                        Icons.dashboard,
-                        color: tabProvider.selectedIndex == 0 ? Colors.green : Colors.black,
-                      ),
-                      title: Text(
-                        "Dashboard",
-                        style: TextStyle(
-                          color: tabProvider.selectedIndex == 0 ? Colors.green : Colors.black,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      selected: tabProvider.selectedIndex == 0,
-                      selectedTileColor: Colors.green.shade100,
-                      onTap: () {
-                        tabProvider.setSelectedIndex(0);
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          bool isSmallScreen = constraints.maxWidth < 1000;
+
+          return Row(
+            children: [
+              Consumer<TabProvider>(
+                builder: (context, tabProvider, child) {
+                  if (isSmallScreen) {
+                    return NavigationRail(
+                      selectedIndex: tabProvider.selectedIndex,
+                      onDestinationSelected: (int index) {
+                        if (index == 11) {
+                          // Logout index
+                          _logout();
+                        } else {
+                          tabProvider.setSelectedIndex(index);
+                        }
                       },
-                    ),
-                    ListTile(
-                      leading: Icon(
-                        Icons.production_quantity_limits_rounded,
-                        color: tabProvider.selectedIndex == 1 ? Colors.green : Colors.black,
-                      ),
-                      title: Text(
-                        "Product",
-                        style: TextStyle(
-                          color: tabProvider.selectedIndex == 1 ? Colors.green : Colors.black,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      selected: tabProvider.selectedIndex == 1,
-                      selectedTileColor: Colors.green.shade100,
-                      onTap: () {
-                        tabProvider.setSelectedIndex(1);
-                      },
-                    ),
-                    ListTile(
-                      leading: Icon(
-                        Icons.person,
-                        color: tabProvider.selectedIndex == 2 ? Colors.green : Colors.black,
-                      ),
-                      title: Text(
-                        "User",
-                        style: TextStyle(
-                          color: tabProvider.selectedIndex == 2 ? Colors.green : Colors.black,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      selected: tabProvider.selectedIndex == 2,
-                      selectedTileColor: Colors.green.shade100,
-                      onTap: () {
-                       tabProvider.setSelectedIndex(2);
-                      },
-                    ),
-                    ListTile(
-                      leading: Icon(
-                        Icons.settings,
-                        color: tabProvider.selectedIndex == 3 ? Colors.green : Colors.black,
-                      ),
-                      title: Text(
-                        "Access Code",
-                        style: TextStyle(
-                          color: tabProvider.selectedIndex == 3 ? Colors.green : Colors.black,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      selected: tabProvider.selectedIndex == 3,
-                      selectedTileColor: Colors.green.shade100,
-                      onTap: () {
-                        tabProvider.setSelectedIndex(3);
-                      },
-                    ),
-                    ListTile(
-                      leading: Icon(
-                        Icons.help,
-                        color: tabProvider.selectedIndex == 4 ? Colors.green : Colors.black,
-                      ),
-                      title: Text(
-                        "Reports",
-                        style: TextStyle(
-                          color: tabProvider.selectedIndex == 4 ? Colors.green : Colors.black,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      selected: tabProvider.selectedIndex == 4,
-                      selectedTileColor: Colors.green.shade100,
-                      onTap: () {
-                        tabProvider.setSelectedIndex(4);
-                      },
-                    ),
-                    ListTile(
-                      leading: Icon(
-                        Icons.new_releases_rounded,
-                        color: tabProvider.selectedIndex == 5 ? Colors.green : Colors.black,
-                      ),
-                      title: Text(
-                        "App Versions",
-                        style: TextStyle(
-                          color: tabProvider.selectedIndex == 5 ? Colors.green : Colors.black,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      selected: tabProvider.selectedIndex == 5,
-                      selectedTileColor: Colors.green.shade100,
-                      onTap: () {
-                        tabProvider.setSelectedIndex(5);
-                      },
-                    ),
-                    /// TODO: new feature request
-                    ListTile(
-                      leading: Icon(
-                        Icons.request_page_rounded,
-                        color: tabProvider.selectedIndex == 6 ? Colors.green : Colors.black,
-                      ),
-                      title: Text(
-                        "Feature Request",
-                        style: TextStyle(
-                          color: tabProvider.selectedIndex == 6 ? Colors.green : Colors.black,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      selected: tabProvider.selectedIndex == 6,
-                      selectedTileColor: Colors.green.shade100,
-                      onTap: () {
-                        tabProvider.setSelectedIndex(6);
-                      },
-                    ),
-                    ListTile(
-                      leading: Icon(
-                        Icons.support_agent_rounded,
-                        color: tabProvider.selectedIndex == 8 ? Colors.green : Colors.black,
-                      ),
-                      title: Text(
-                        "Chat",
-                        style: TextStyle(
-                          color: tabProvider.selectedIndex == 8 ? Colors.green : Colors.black,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      selected: tabProvider.selectedIndex == 8,
-                      selectedTileColor: Colors.green.shade100,
-                      onTap: () {
-                        tabProvider.setSelectedIndex(8);
-                      },
-                    ),
-                    ListTile(
-                      leading: Icon(
-                        Icons.reviews_rounded,
-                        color: tabProvider.selectedIndex == 7 ? Colors.green : Colors.black,
-                      ),
-                      title: Text(
-                        "Reviews/Rate",
-                        style: TextStyle(
-                          color: tabProvider.selectedIndex == 7 ? Colors.green : Colors.black,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      selected: tabProvider.selectedIndex == 7,
-                      selectedTileColor: Colors.green.shade100,
-                      onTap: () {
-                        tabProvider.setSelectedIndex(7);
-                      },
-                    ),
-                    ListTile(
-                        leading: Icon(
-                          Icons.info,
-                          color: tabProvider.selectedIndex == 9 ? Colors.green : Colors.black,
-                        ),
-                        title: Text(
-                          "About Us",
-                          style: TextStyle(
-                            color: tabProvider.selectedIndex == 9 ? Colors.green : Colors.black,
-                            fontWeight: FontWeight.w600,
+                      labelType: NavigationRailLabelType.all,
+                      leading: Padding(
+                        padding: const EdgeInsets.only(bottom: 20.0, top: 20.0),
+                        child: CircleAvatar(
+                          radius: 20,
+                          backgroundColor: Colors.green,
+                          child: Icon(
+                            Icons.person,
+                            size: 24,
+                            color: Colors.white,
                           ),
                         ),
-                        selected: tabProvider.selectedIndex == 9,
-                        selectedTileColor: Colors.green.shade100,
-                        onTap: (){
-                          tabProvider.setSelectedIndex(9);
-                        }
-                    ),
-                    ListTile(
-                        leading: Icon(
-                          Icons.menu_book,
-                          color: tabProvider.selectedIndex == 10 ? Colors.green : Colors.black,
+                      ),
+                      destinations: [
+                        NavigationRailDestination(
+                          icon: Icon(Icons.dashboard),
+                          selectedIcon: Icon(
+                            Icons.dashboard,
+                            color: Colors.green,
+                          ),
+                          label: Text("Dashboard"),
                         ),
-                        title: Text(
-                          "App Guide",
-                          style: TextStyle(
-                            color: tabProvider.selectedIndex == 10 ? Colors.green : Colors.black,
-                            fontWeight: FontWeight.w600,
+                        NavigationRailDestination(
+                          icon: Icon(Icons.production_quantity_limits_rounded),
+                          selectedIcon: Icon(
+                            Icons.production_quantity_limits_rounded,
+                            color: Colors.green,
+                          ),
+                          label: Text("Product"),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.person),
+                          selectedIcon: Icon(Icons.person, color: Colors.green),
+                          label: Text("User"),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.settings),
+                          selectedIcon: Icon(
+                            Icons.settings,
+                            color: Colors.green,
+                          ),
+                          label: Text("Access"),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.help),
+                          selectedIcon: Icon(Icons.help, color: Colors.green),
+                          label: Text("Reports"),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.new_releases_rounded),
+                          selectedIcon: Icon(
+                            Icons.new_releases_rounded,
+                            color: Colors.green,
+                          ),
+                          label: Text("Versions"),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.request_page_rounded),
+                          selectedIcon: Icon(
+                            Icons.request_page_rounded,
+                            color: Colors.green,
+                          ),
+                          label: Text("Features"),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.reviews_rounded),
+                          selectedIcon: Icon(
+                            Icons.reviews_rounded,
+                            color: Colors.green,
+                          ),
+                          label: Text("Reviews"),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.support_agent_rounded),
+                          selectedIcon: Icon(
+                            Icons.support_agent_rounded,
+                            color: Colors.green,
+                          ),
+                          label: Text("Chat"),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.info),
+                          selectedIcon: Icon(Icons.info, color: Colors.green),
+                          label: Text("About"),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.menu_book),
+                          selectedIcon: Icon(
+                            Icons.menu_book,
+                            color: Colors.green,
+                          ),
+                          label: Text("Guide"),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.logout, color: Colors.red),
+                          label: Text(
+                            "Logout",
+                            style: TextStyle(color: Colors.red),
                           ),
                         ),
-                        selected: tabProvider.selectedIndex == 10,
-                        selectedTileColor: Colors.green.shade100,
-                        onTap: (){
-                          tabProvider.setSelectedIndex(10);
-                        }
-                    ),
-                    ListTile(
-                      leading: Icon(
-                        Icons.logout,
-                        color: tabProvider.selectedIndex == 11 ? Colors.green : Colors.black,
+                      ],
+                    );
+                  } else {
+                    return Drawer(
+                      backgroundColor: Colors.white,
+                      elevation: 2,
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            height: 150,
+                            child: CircleAvatar(
+                              radius: 50,
+                              backgroundColor: Colors.green,
+                              child: Icon(
+                                Icons.person,
+                                size: 60,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: ListView(
+                              padding: EdgeInsets.zero,
+                              children: [
+                                _buildDrawerItem(
+                                  tabProvider,
+                                  0,
+                                  Icons.dashboard,
+                                  "Dashboard",
+                                ),
+                                _buildDrawerItem(
+                                  tabProvider,
+                                  1,
+                                  Icons.production_quantity_limits_rounded,
+                                  "Product",
+                                ),
+                                _buildDrawerItem(
+                                  tabProvider,
+                                  2,
+                                  Icons.person,
+                                  "User",
+                                ),
+                                _buildDrawerItem(
+                                  tabProvider,
+                                  3,
+                                  Icons.settings,
+                                  "Access Code",
+                                ),
+                                _buildDrawerItem(
+                                  tabProvider,
+                                  4,
+                                  Icons.help,
+                                  "Reports",
+                                ),
+                                _buildDrawerItem(
+                                  tabProvider,
+                                  5,
+                                  Icons.new_releases_rounded,
+                                  "App Versions",
+                                ),
+                                _buildDrawerItem(
+                                  tabProvider,
+                                  6,
+                                  Icons.request_page_rounded,
+                                  "Feature Request",
+                                ),
+                                _buildDrawerItem(
+                                  tabProvider,
+                                  7,
+                                  Icons.reviews_rounded,
+                                  "Reviews/Rate",
+                                ),
+                                _buildDrawerItem(
+                                  tabProvider,
+                                  8,
+                                  Icons.support_agent_rounded,
+                                  "Chat",
+                                ),
+                                _buildDrawerItem(
+                                  tabProvider,
+                                  9,
+                                  Icons.info,
+                                  "About Us",
+                                ),
+                                _buildDrawerItem(
+                                  tabProvider,
+                                  10,
+                                  Icons.menu_book,
+                                  "App Guide",
+                                ),
+                                ListTile(
+                                  leading: Icon(
+                                    Icons.logout,
+                                    color: Colors.black,
+                                  ),
+                                  title: Text(
+                                    "Logout",
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  onTap: _logout,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      title: Text(
-                        "Logout",
-                        style: TextStyle(
-                          color: tabProvider.selectedIndex == 11 ? Colors.green : Colors.black,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      selected: tabProvider.selectedIndex == 11,
-                      selectedTileColor: Colors.green.shade100,
-                      onTap: (){
-                        _logout();
-                      }
-                    ),
-                  ],
+                    );
+                  }
+                },
+              ),
+              // Main content with IndexedStack for performance
+              Expanded(
+                child: Consumer<TabProvider>(
+                  builder: (context, tabProvider, child) {
+                    return IndexedStack(
+                      index: tabProvider.selectedIndex,
+                      children: _pages,
+                    );
+                  },
                 ),
-              );
-            }
-          ),
-          // Main content
-          Consumer<TabProvider>(
-            builder: (context,tabProvider, child) {
-              return Expanded(
-                child: Container(
-                  // color: Theme.of(context).colorScheme.onPrimaryContainer,
-                  child: PageTransitionSwitcher(
-                    duration: const Duration(milliseconds: 400),
-                    reverse: tabProvider.lastIndex > tabProvider.selectedIndex,
-                    transitionBuilder: (child, animation, secondaryAnimation) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: SlideTransition(
-                          position: Tween<Offset>(
-                            begin: Offset(tabProvider.lastIndex < tabProvider.selectedIndex ? 0.2 : -0.2, 0.0),
-                            end: Offset.zero,
-                          ).animate(CurvedAnimation(
-                            parent: animation,
-                            curve: Curves.easeInOut,
-                          )),
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: KeyedSubtree(
-                      key: ValueKey<int>(tabProvider.selectedIndex),
-                      child: tabProvider.selectedWidget,
-                    ),
-                  ),
-                ),
-              );
-            }
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-
+  Widget _buildDrawerItem(
+    TabProvider tabProvider,
+    int index,
+    IconData icon,
+    String title,
+  ) {
+    bool isSelected = tabProvider.selectedIndex == index;
+    return ListTile(
+      leading: Icon(icon, color: isSelected ? Colors.green : Colors.black),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: isSelected ? Colors.green : Colors.black,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      selected: isSelected,
+      selectedTileColor: Colors.green.shade100,
+      onTap: () {
+        tabProvider.setSelectedIndex(index);
+      },
+    );
+  }
 
   void _logout() {
     showDialog(
@@ -315,8 +323,11 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: Colors.white,
-          title: Text("Logout",style: TextStyle(color: Colors.black),),
-          content:  Text("Are you sure you want to logout?",style: TextStyle(color: Colors.black),),
+          title: Text("Logout", style: TextStyle(color: Colors.black)),
+          content: Text(
+            "Are you sure you want to logout?",
+            style: TextStyle(color: Colors.black),
+          ),
           actions: <Widget>[
             TextButton(
               onPressed: () {
@@ -326,7 +337,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             TextButton(
               onPressed: () {
-               AdminSharedPreferences().logout();
+                AdminSharedPreferences().logout();
               },
               child: const Text("Logout"),
             ),
@@ -336,5 +347,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
-
