@@ -674,7 +674,13 @@ class _UserScreenState extends State<UserScreen>
                   return Center(child: CircularProgressIndicator());
                 }
                 // Make sure the tab controller is in sync with the selected category
-                int selectedIndex = -1;
+                int selectedIndex = categories.indexWhere((element) {
+                  if (userProvider.getSelectedCategory == "" &&
+                      element.category == "All") {
+                    return true;
+                  }
+                  return element.category == userProvider.getSelectedCategory;
+                });
 
                 // If found valid index, update the tab controller
                 if (selectedIndex != -1 &&
@@ -770,6 +776,7 @@ class _UserScreenState extends State<UserScreen>
                           spacing: 12,
                           runSpacing: 12,
                           children: [
+                            _buildFilterButton(context, 'Verified'),
                             _buildFilterButton(context, 'Pending'),
                             _buildFilterButton(context, 'Disabled'),
                             _buildFilterButton(context, 'Deleted'),
@@ -1234,6 +1241,12 @@ class _UserScreenState extends State<UserScreen>
         deletedCount++;
       }
     }
+    int verifiedCount = 0;
+    for (var user in userProvider.usersByCategory) {
+      if (user.isPinVerified && user.isOtpVerified) {
+        verifiedCount++;
+      }
+    }
     switch (label) {
       case 'Pending':
         count = pendingCount;
@@ -1243,6 +1256,9 @@ class _UserScreenState extends State<UserScreen>
         break;
       case 'Deleted':
         count = deletedCount;
+        break;
+      case 'Verified':
+        count = verifiedCount;
         break;
       default:
         count = 0;

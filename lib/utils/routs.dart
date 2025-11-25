@@ -1,7 +1,7 @@
 import 'package:admin_panel/about_us/screen/about_us_screen.dart';
 import 'package:admin_panel/admin_auth/login_page.dart';
 import 'package:admin_panel/app_version/app_version.dart';
-import 'package:admin_panel/dashboard.dart';
+import 'package:admin_panel/dashboard/dashboard.dart';
 import 'package:admin_panel/feature_request/feature_request_screen.dart';
 import 'package:admin_panel/home_page.dart';
 import 'package:admin_panel/product/all_product_get.dart';

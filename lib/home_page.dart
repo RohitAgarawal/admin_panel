@@ -12,7 +12,7 @@ import 'package:admin_panel/app_use_guide/screen/app_use_guide_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'dashboard.dart';
+import 'dashboard/dashboard.dart';
 
 class HomeScreen extends StatefulWidget {
   static const routeName = "/home-page";

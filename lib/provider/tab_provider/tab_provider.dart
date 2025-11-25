@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../../access_code/access_code.dart';
 import '../../app_use_guide/screen/app_use_guide_screen.dart';
-import '../../dashboard.dart';
+import '../../dashboard/dashboard.dart';
 import '../../product/all_product_get.dart';
 import '../../report/report_screen.dart';
 import '../../user/user_Screen.dart';
