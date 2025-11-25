@@ -1,3 +1,7 @@
+import 'package:admin_panel/model/product_model/product.dart';
+import 'package:admin_panel/product/components/filter_sheet.dart';
+import 'package:admin_panel/product/components/product_card.dart';
+import 'package:admin_panel/product/components/product_filter_bar.dart';
 import 'package:admin_panel/product/product_details_screen/bike/bike_details_screen.dart';
 import 'package:admin_panel/product/product_details_screen/book_sport_hobby/book_sports_hobby_details_screen.dart';
 import 'package:admin_panel/product/product_details_screen/car/car_details_screen.dart';
@@ -10,7 +14,6 @@ import 'package:admin_panel/product/product_details_screen/property/property_det
 import 'package:admin_panel/product/product_details_screen/services/services_details_screen.dart';
 import 'package:admin_panel/product/product_details_screen/smart_phone/smart_phone_details_screen.dart';
 import 'package:admin_panel/provider/product_provider/product_provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
@@ -29,14 +32,16 @@ class AllProductGet extends StatefulWidget {
 
 class _AllProductGetState extends State<AllProductGet>
     with SingleTickerProviderStateMixin {
-  @override
-  TabController? _tabController;
-
   String baseUrl = Apis.BASE_URL_IMAGE;
   String selectedCategory = "";
   int selectedProductTypeIndex = 0;
   TextEditingController searchController = TextEditingController();
   String searchQuery = '';
+
+  // Advanced Filters
+  String _sortBy = 'newest'; // newest, oldest, price_asc, price_desc
+  RangeValues _priceRange = const RangeValues(0, 1000000000);
+  bool _isFilterApplied = false;
 
   @override
   void initState() {
@@ -49,594 +54,409 @@ class _AllProductGetState extends State<AllProductGet>
     // Get the selected category from the provider
     selectedCategory = productProvider.getSelectedCategory;
 
-    getAllProducts();
-    productProvider.getProductType().then((_) {
-      _tabController = TabController(
-        length: productProvider.products.length,
-        vsync: this,
-      );
+    // Initial Fetch
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchInitialData();
     });
   }
 
-  void getAllProducts() async {
-    ProductProvider productProvider = Provider.of<ProductProvider>(
+  void _fetchInitialData() {
+    final productProvider = Provider.of<ProductProvider>(
       context,
       listen: false,
     );
-    if (productProvider.products.isNotEmpty) {
-      String productTypeId = productProvider.products[0].id;
-
-      // Apply category filter if it exists
-      if (selectedCategory.isNotEmpty) {
-        productProvider.fetchProducts(productTypeId, category: selectedCategory);
-      } else {
-        productProvider.fetchProducts(productTypeId);
+    productProvider.getProductType().then((_) {
+      if (productProvider.products.isNotEmpty) {
+        // If we have a selected category from provider, use it
+        if (selectedCategory.isNotEmpty) {
+          final productTypeId =
+              productProvider.products[selectedProductTypeIndex].id;
+          productProvider.fetchProducts(
+            productTypeId,
+            category: selectedCategory,
+          );
+        } else {
+          final productTypeId =
+              productProvider.products[selectedProductTypeIndex].id;
+          productProvider.fetchProducts(productTypeId);
+        }
       }
+    });
+  }
+
+  void _onProductTypeSelected(int index) {
+    setState(() {
+      selectedProductTypeIndex = index;
+      selectedCategory = ""; // Reset sub-category when switching types
+      _sortBy = 'newest'; // Reset sort
+      _isFilterApplied = false; // Reset filter flag
+      searchController.clear();
+      searchQuery = '';
+    });
+    final productProvider = Provider.of<ProductProvider>(
+      context,
+      listen: false,
+    );
+    final productTypeId = productProvider.products[index].id;
+    productProvider.fetchProducts(productTypeId);
+  }
+
+  void _onCategorySelected(String category) {
+    final productProvider = Provider.of<ProductProvider>(
+      context,
+      listen: false,
+    );
+    final productTypeId = productProvider.products[selectedProductTypeIndex].id;
+
+    if (selectedCategory == category) {
+      // Deselect
+      setState(() {
+        selectedCategory = "";
+      });
+      productProvider.fetchProducts(productTypeId);
+    } else {
+      // Select
+      setState(() {
+        selectedCategory = category;
+      });
+      productProvider.fetchProducts(productTypeId, category: category);
     }
   }
 
-  @override
-  void dispose() {
-    _tabController?.dispose();
-    super.dispose();
+  List<ProductModel> _getProcessedProducts(List<ProductModel> products) {
+    List<ProductModel> processed = List.from(products);
+
+    // 1. Search Filter (Client-side if needed, though provider has searchProduct)
+    // The provider's searchProduct hits the API.
+    // If we want to filter the CURRENT list, we can do it here.
+    // But usually search replaces the list.
+    // Let's rely on the provider's list which should already be filtered by search if the user used the search bar.
+    // However, the search bar in the UI calls `productProvider.searchProduct`.
+    // So `products` here is already the result of that.
+
+    // 2. Price Range Filter
+    if (_isFilterApplied) {
+      processed = processed.where((p) {
+        if (p.price.isEmpty)
+          return true; // Keep items with no price? Or hide? Let's keep.
+        String priceStr = p.price.last.toString();
+        // Clean price string
+        priceStr = priceStr.replaceAll(RegExp(r'[^0-9.]'), '');
+        double? price = double.tryParse(priceStr);
+        if (price == null) return true;
+        return price >= _priceRange.start && price <= _priceRange.end;
+      }).toList();
+    }
+
+    // 3. Sorting
+    switch (_sortBy) {
+      case 'price_asc':
+        processed.sort((a, b) {
+          double priceA = _parsePrice(a);
+          double priceB = _parsePrice(b);
+          return priceA.compareTo(priceB);
+        });
+        break;
+      case 'price_desc':
+        processed.sort((a, b) {
+          double priceA = _parsePrice(a);
+          double priceB = _parsePrice(b);
+          return priceB.compareTo(priceA);
+        });
+        break;
+      case 'oldest':
+        processed = processed.reversed.toList();
+        break;
+      case 'newest':
+      default:
+        // Default order (usually newest from API)
+        break;
+    }
+
+    return processed;
+  }
+
+  double _parsePrice(ProductModel p) {
+    if (p.price.isEmpty) return 0;
+    String priceStr = p.price.last.toString();
+    priceStr = priceStr.replaceAll(RegExp(r'[^0-9.]'), '');
+    return double.tryParse(priceStr) ?? 0;
+  }
+
+  void _showFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => FilterSheet(
+        currentSort: _sortBy,
+        currentPriceRange: _priceRange,
+        onSortChanged: (val) => setState(() => _sortBy = val),
+        onPriceRangeChanged: (val) => setState(() => _priceRange = val),
+        onApply: () {
+          setState(() {
+            _isFilterApplied = true;
+          }); // Trigger rebuild to apply filters
+        },
+        onReset: () {
+          setState(() {
+            _sortBy = 'newest';
+            _priceRange = const RangeValues(0, 1000000000);
+            _isFilterApplied = false;
+          });
+          Navigator.pop(context);
+        },
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    ProductProvider productProvider = Provider.of<ProductProvider>(
-      context,
-      listen: true,
-    );
+    final productProvider = Provider.of<ProductProvider>(context);
+    final products = _getProcessedProducts(productProvider.filteredProducts);
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          spacing: 15,
-          children: [
-            const SizedBox(height: 10,),
-            Consumer<ProductProvider>(
-              builder: (context, productProvider, child) {
-                if (productProvider.products.isEmpty) {
-                  return SizedBox.shrink();
-                }
-
-                return Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.center,
-                  children: List.generate(productProvider.products.length, (index) {
-                    final product = productProvider.products[index];
-                    final isSelected = selectedProductTypeIndex == index;
-
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedProductTypeIndex = index;
-                          selectedCategory = "";
-                        });
-                        final productTypeId = product.id;
-                        productProvider.fetchProducts(productTypeId);
-                        print(productTypeId);
-                        print("+++++++++++");
-                      },
-                      child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: isSelected ? Colors.green.shade700 : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.green.shade700,
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Text(
-                          "${product.name} (${product.count})",
-                          style: TextStyle(
-                            color: isSelected ? Colors.white : Colors.green.shade700,
-                            fontSize: 15,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                );
-              },
-            ),
-
-            Wrap(
-              spacing: 50,
-              runSpacing: 10,
-              children: [
-                InkWell(
-                  highlightColor: Colors.transparent,
-                  hoverColor: Colors.transparent,
-                  splashColor: Colors.transparent,
-                  onTap: () {
-                    print("A");
-                    if (selectedCategory == "A") {
-                      setState(() {
-                        selectedCategory = "";
-                      });
-                      String productTypeId =
-                          productProvider.products[selectedProductTypeIndex].id;
-                      productProvider.fetchProducts(productTypeId);
-                    } else {
-                      setState(() {
-                        selectedCategory = "A";
-                      });
-                      String productTypeId =
-                          productProvider.products[selectedProductTypeIndex].id;
-                      productProvider.fetchProducts(
-                        productTypeId,
-                        category: "A",
-                      );
-                    }
-                  },
-                  child: Container(
-                    margin: EdgeInsets.symmetric(horizontal: 20),
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.green.shade700,
-                        width: 1.5,
-                      ),
-                      color:
-                          selectedCategory == "A"
-                              ? Colors.green.shade700
-                              : Colors.white,
-                    ),
-                    child: Text("A ${productProvider.countByProductTypeId(selectedProductTypeIndex).A}",style: TextStyle(color: selectedCategory == "A" ? Colors.white : Colors.green),),
-                  ),
-                ),
-                InkWell(
-                  highlightColor: Colors.transparent,
-                  hoverColor: Colors.transparent,
-                  splashColor: Colors.transparent,
-                  onTap: () {
-                    print("B");
-                    if (selectedCategory == "B") {
-                      setState(() {
-                        selectedCategory = "";
-                      });
-                      String productTypeId =
-                          productProvider.products[selectedProductTypeIndex].id;
-                      productProvider.fetchProducts(
-                        productTypeId,
-                      );
-                    } else {
-                      setState(() {
-                        selectedCategory = "B";
-                      });
-                      String productTypeId =
-                          productProvider.products[selectedProductTypeIndex].id;
-                      productProvider.fetchProducts(
-                        productTypeId,
-                        category: "B",
-                      );
-                    }
-                  },
-                  child: Container(
-                    margin: EdgeInsets.symmetric(horizontal: 20),
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.green.shade700,
-                        width: 1.5,
-                      ),
-                      color:
-                      selectedCategory == "B"
-                          ? Colors.green.shade700
-                          : Colors.white,
-                    ),
-                    child: Text("B ${productProvider.countByProductTypeId(selectedProductTypeIndex).B}",style: TextStyle(color: selectedCategory == "B" ? Colors.white : Colors.green),),
-                  ),
-                ),
-                InkWell(
-                  highlightColor: Colors.transparent,
-                  hoverColor: Colors.transparent,
-                  splashColor: Colors.transparent,
-                  onTap: () {
-                    print("C");
-                    if (selectedCategory == "C") {
-                      setState(() {
-                        selectedCategory = "";
-                      });
-                      String productTypeId =
-                          productProvider.products[selectedProductTypeIndex].id;
-                      productProvider.fetchProducts(
-                        productTypeId,
-                      );
-                    } else {
-                      setState(() {
-                        selectedCategory = "C";
-                      });
-                      String productTypeId =
-                          productProvider.products[selectedProductTypeIndex].id;
-                      productProvider.fetchProducts(
-                        productTypeId,
-                        category: "C",
-                      );
-                    }
-                  },
-                  child: Container(
-                    margin: EdgeInsets.symmetric(horizontal: 20),
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.green.shade700,
-                        width: 1.5,
-                      ),
-                      color:
-                      selectedCategory == "C"
-                          ? Colors.green.shade700
-                          : Colors.white,
-                    ),
-                    child: Text("C ${productProvider.countByProductTypeId(selectedProductTypeIndex).C}",style: TextStyle(color: selectedCategory == "C" ? Colors.white : Colors.green),),
-                  ),
-                ),
-                InkWell(
-                  highlightColor: Colors.transparent,
-                  hoverColor: Colors.transparent,
-                  splashColor: Colors.transparent,
-                  onTap: () {
-                    print("D");
-                    if (selectedCategory == "D") {
-                      setState(() {
-                        selectedCategory = "";
-                      });
-                      String productTypeId =
-                          productProvider.products[selectedProductTypeIndex].id;
-                      productProvider.fetchProducts(
-                        productTypeId,
-                      );
-                    } else {
-                      setState(() {
-                        selectedCategory = "D";
-                      });
-                      String productTypeId =
-                          productProvider.products[selectedProductTypeIndex].id;
-                      productProvider.fetchProducts(
-                        productTypeId,
-                        category: "D",
-                      );
-                    }
-                  },
-                  child: Container(
-                    margin: EdgeInsets.symmetric(horizontal: 20),
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.green.shade700,
-                        width: 1.5,
-                      ),
-                      color:
-                      selectedCategory == "D"
-                          ? Colors.green.shade700
-                          : Colors.white,
-                    ),
-                    child: Text("D ${productProvider.countByProductTypeId(selectedProductTypeIndex).D}",style: TextStyle(color: selectedCategory == "D" ? Colors.white : Colors.green),),
-                  ),
-                ),
-                InkWell(
-                  highlightColor: Colors.transparent,
-                  hoverColor: Colors.transparent,
-                  splashColor: Colors.transparent,
-                  onTap: () {
-                    print("E");
-                    if (selectedCategory == "E") {
-                      setState(() {
-                        selectedCategory = "";
-                      });
-                      String productTypeId =
-                          productProvider.products[selectedProductTypeIndex].id;
-                      productProvider.fetchProducts(
-                        productTypeId,
-                      );
-                    } else {
-                      setState(() {
-                        selectedCategory = "E";
-                      });
-                      String productTypeId =
-                          productProvider.products[selectedProductTypeIndex].id;
-                      productProvider.fetchProducts(
-                        productTypeId,
-                        category: "E",
-                      );
-                    }
-                  },
-                  child: Container(
-                    margin: EdgeInsets.symmetric(horizontal: 20),
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.green.shade700,
-                        width: 1.5,
-                      ),
-                      color:
-                      selectedCategory == "E"
-                          ? Colors.green.shade700
-                          : Colors.white,
-                    ),
-                    child: Text("E ${productProvider.countByProductTypeId(selectedProductTypeIndex).E}",style: TextStyle(color: selectedCategory == "E" ? Colors.white : Colors.green),),
-                  ),
-                ),
-              ],
-            ),
-            Container(
-              height: 50,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.black,width: 0.7),
-                //color: Colors.grey.shade100
-              ),
-              child: Row(
+      backgroundColor: const Color(0xFFF5F7FA),
+      body: CustomScrollView(
+        slivers: [
+          // Header
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                      height: 50,
-                      padding: EdgeInsets.symmetric(horizontal: 10),
-                      decoration: BoxDecoration(
-                          color: Colors.green.shade500,
-                          borderRadius:
-                          BorderRadius.horizontal(left: Radius.circular(10))),
-                      child: Icon(Icons.search_rounded,color: Colors.white,)
-                  ),
-                  Builder(
-                      builder: (context) {
-                        return Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                            child: TextField(
-                              onChanged: (value) {
-                                setState(() {
-                                  searchQuery = value;
-                                });
-
-                                if (searchQuery.isNotEmpty) {
-                                  productProvider.searchProduct(searchQuery,productProvider.getSelectedCategory,productProvider.modelName);
-                                } else {
-                                  if (productProvider.getSelectedCategory.isNotEmpty) {
-                                    getAllProducts();
-                                  } else {
-                                    // getProductByCategory(userReadList[selectedIndex]);
-                                  }
-                                }
-                              },
-                              controller: searchController,
-                              textCapitalization: TextCapitalization.words,
-                              decoration: InputDecoration(
-                                hintText: 'Search by...',
-                                hintStyle: TextStyle(
-                                  color:Colors.black
-                                ),
-                                border: InputBorder.none,
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-                  ),
-
-                ],
-              ),
-            ),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  double width = constraints.maxWidth;
-                  int crossAxisCount = (width / 280).floor();
-                  crossAxisCount = crossAxisCount < 2 ? 2 : crossAxisCount;
-
-                  return GridView.builder(
-                    padding: EdgeInsets.all(16),
-                    gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 320, // Maximum width per item
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                      childAspectRatio: 2.0, // You can adjust height ratio
+                  const Text(
+                    "Products",
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
                     ),
-                    itemCount: productProvider.filteredProducts.length,
-                    itemBuilder: (context, index) {
-                      final product = productProvider.filteredProducts[index];
-                      final title = product.adTitle.last.toString();
-                      final price = product.price.isNotEmpty? product.price.last.toString().contains("-") || product.price.last.toString().contains(".")?"Invalid Price": product.price.last.toString(): 'No Price';
-                      final description = product.description.last.toString();
-                     // final area = product.address1.last.toString();
-                      final imageUrl =
-                          product.images.isNotEmpty
-                              ? '$baseUrl${product.images.first}'
-                              : '';
-                      return GestureDetector(
-                        onTap: () {
-                          navigateToProductFormScreen(
-                            product.modelName,
-                            product.id,
-                          );
-                        },
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Manage your inventory",
+                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 24),
+                  // Search and Filter Row
+                  Row(
+                    children: [
+                      Expanded(
                         child: Container(
-                          padding: EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.green.shade700,
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (imageUrl.isNotEmpty)
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(10),
-                                        child: CachedNetworkImage(
-                                          imageUrl:imageUrl,
-                                          width: 90,
-                                          height: 90,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),
-                                    SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          if(price.isNotEmpty)
-                                            Text(
-                                              '₹ $price',
-                                              style: TextStyle(
-                                                color: price == "Invalid Price"?Colors.red: Colors.green.shade800,
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          SizedBox(height: 4),
-                                          Text(
-                                            title,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                          SizedBox(height: 4),
-                                          Expanded(
-                                            child: Text(
-                                              description,
-                                              maxLines: 3,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                color: Colors.grey[800],
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 2),
                               ),
-                              Divider(height: 1,),
-                              Text(
-                                product.modelName.replaceAll("_", " ").toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                              SizedBox(height: 6),
                             ],
                           ),
+                          child: TextField(
+                            controller: searchController,
+                            onChanged: (value) {
+                              setState(() {
+                                searchQuery = value;
+                              });
+                              if (searchQuery.isNotEmpty) {
+                                productProvider.searchProduct(
+                                  searchQuery,
+                                  productProvider.getSelectedCategory,
+                                  productProvider.modelName,
+                                );
+                              } else {
+                                // Reload current category
+                                _onProductTypeSelected(
+                                  selectedProductTypeIndex,
+                                );
+                              }
+                            },
+                            decoration: InputDecoration(
+                              hintText: "Search products...",
+                              prefixIcon: Icon(
+                                Icons.search_rounded,
+                                color: Colors.grey[400],
+                              ),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                            ),
+                          ),
                         ),
-                      );
-                    },
-                  );
-                },
+                      ),
+                      const SizedBox(width: 16),
+                      InkWell(
+                        onTap: _showFilterSheet,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.tune_rounded,
+                            color: Colors.green.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+
+          // Filter Bar
+          SliverToBoxAdapter(
+            child: ProductFilterBar(
+              productTypes: productProvider.products,
+              selectedTypeIndex: selectedProductTypeIndex,
+              selectedCategory: selectedCategory,
+              onTypeSelected: _onProductTypeSelected,
+              onCategorySelected: _onCategorySelected,
+              getCategoryCounts: (index) {
+                // This is a bit tricky as the signature expects int->Record
+                // But we are not using this callback in the new implementation of FilterBar
+                // I simplified the FilterBar to not need this callback for rendering the A-E list directly.
+                // Wait, I need to check my FilterBar implementation.
+                // In FilterBar I commented out the usage of counts for A-E.
+                // So passing a dummy function is fine or I should have removed it.
+                // Let's just pass the provider function.
+                return productProvider.countByProductTypeId(index);
+              },
+            ),
+          ),
+
+          const SliverPadding(padding: EdgeInsets.all(12)),
+
+          // Product Grid
+          if (productProvider.isLoading)
+            const SliverFillRemaining(
+              child: Center(
+                child: CircularProgressIndicator(color: Colors.green),
+              ),
+            )
+          else if (products.isEmpty)
+            SliverFillRemaining(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.inventory_2_outlined,
+                      size: 64,
+                      color: Colors.grey.shade300,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      "No products found",
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              sliver: SliverGrid(
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 220,
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  childAspectRatio: 0.7, // Adjusted for better fit
+                ),
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final product = products[index];
+                  return ProductCard(
+                    product: product,
+                    onTap: () => navigateToProductFormScreen(
+                      product.modelName,
+                      product.id,
+                    ),
+                  );
+                }, childCount: products.length),
+              ),
+            ),
+
+          const SliverPadding(padding: EdgeInsets.only(bottom: 80)),
+        ],
       ),
     );
   }
 
   void navigateToProductFormScreen(String modelName, String productId) {
-    print(modelName);
-    Map<String, dynamic> args = {"productId": productId, "modelName": modelName,"isEdit": true };
+    Map<String, dynamic> args = {
+      "productId": productId,
+      "modelName": modelName,
+      "isEdit": true,
+    };
     switch (modelName.toLowerCase()) {
       case "bike":
-        {
-          GetxNavigation.next(BikeDetailsScreen.routeName, arguments: args);
-          break;
-        }
+        GetxNavigation.next(BikeDetailsScreen.routeName, arguments: args);
+        break;
       case "property":
-        {
-          GetxNavigation.next(PropertyDetailsScreen.routeName, arguments: args);
-          // GetxNavigation.next(Property.routeName,arguments: productSubType);
-          break;
-        }
+        GetxNavigation.next(PropertyDetailsScreen.routeName, arguments: args);
+        break;
       case "car":
-        {
-          GetxNavigation.next(CarDetailsScreen.routeName, arguments: args);
-          break;
-        }
+        GetxNavigation.next(CarDetailsScreen.routeName, arguments: args);
+        break;
       case "book_sport_hobby":
-        {
-          GetxNavigation.next(
-            BookSportsHobbyDetailsScreen.routeName,
-            arguments: args,
-          );
-          break;
-        }
+        GetxNavigation.next(
+          BookSportsHobbyDetailsScreen.routeName,
+          arguments: args,
+        );
+        break;
       case "electronic":
-        {
-          GetxNavigation.next(
-            ElectronicsDetailsScreen.routeName,
-            arguments: args,
-          );
-          break;
-        }
+        GetxNavigation.next(
+          ElectronicsDetailsScreen.routeName,
+          arguments: args,
+        );
+        break;
       case "furniture":
-        {
-          GetxNavigation.next(
-            FurnitureDetailsScreen.routeName,
-            arguments: args,
-          );
-          break;
-        }
+        GetxNavigation.next(FurnitureDetailsScreen.routeName, arguments: args);
+        break;
       case "job":
-        {
-          GetxNavigation.next(JobDetailsScreen.routeName, arguments: args);
-          break;
-        }
+        GetxNavigation.next(JobDetailsScreen.routeName, arguments: args);
+        break;
       case "pet":
-        {
-          GetxNavigation.next(PetDetailsScreen.routeName, arguments: args);
-          break;
-        }
+        GetxNavigation.next(PetDetailsScreen.routeName, arguments: args);
+        break;
       case "smart_phone":
-        {
-          GetxNavigation.next(
-            SmartPhoneDetailsScreen.routeName,
-            arguments: args,
-          );
-          // GetxNavigation.next(SmartPhone.routeName,arguments: productSubType);
-          break;
-        }
+        GetxNavigation.next(SmartPhoneDetailsScreen.routeName, arguments: args);
+        break;
       case "services":
-        {
-          GetxNavigation.next(ServicesDetailScreen.routeName, arguments: args);
-          break;
-        }
+        GetxNavigation.next(ServicesDetailScreen.routeName, arguments: args);
+        break;
       case "other":
-        {
-          GetxNavigation.next(OtherProductDetails.routeName, arguments: args);
-          // GetxNavigation.next(OtherScreen.routeName,arguments: productSubType);
-          break;
-        }
+        GetxNavigation.next(OtherProductDetails.routeName, arguments: args);
+        break;
       default:
-        {
-          Get.snackbar(
-            "Oops!!!!!",
-            "Something went wrong while selecting option.",
-            backgroundColor: Colors.red,
-            colorText: Colors.white,
-            snackPosition: SnackPosition.BOTTOM,
-          );
-        }
+        Get.snackbar(
+          "Oops!!!!!",
+          "Something went wrong while selecting option.",
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
     }
   }
 }
