@@ -208,6 +208,12 @@ class _DashboardState extends State<Dashboard> {
                     count: userProvider.totalReport.toString(),
                     color: Colors.redAccent,
                     icon: Icons.report_problem,
+                    onTap: () {
+                      Provider.of<TabProvider>(
+                        context,
+                        listen: false,
+                      ).setSelectedIndex(4);
+                    },
                   ),
                 ],
               ),

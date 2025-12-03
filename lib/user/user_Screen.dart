@@ -1,10 +1,12 @@
 import 'package:admin_panel/model/user_model/user_model.dart';
 import 'package:admin_panel/navigation/getX_navigation.dart';
 import 'package:admin_panel/provider/access_code_provider/access_code_provider.dart';
+import 'package:admin_panel/services/excel_export_service.dart';
 import 'package:admin_panel/user/user_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:toastification/toastification.dart';
 
 import '../model/user_model/user_tab_model.dart';
 import '../provider/user_provider/user_provider.dart';
@@ -23,6 +25,7 @@ class _UserScreenState extends State<UserScreen>
   TabController? _tabController;
   DateTimeRange? _selectedDateRange;
   Set<String> _loadingUserIds = {};
+  bool _isDownloading = false;
 
   @override
   void initState() {
@@ -651,6 +654,95 @@ class _UserScreenState extends State<UserScreen>
     );
   }
 
+  /// Downloads filtered user data to Excel file
+  Future<void> _downloadExcel(UserProvider userProvider) async {
+    setState(() {
+      _isDownloading = true;
+    });
+
+    try {
+      // Get the filtered users list (same logic as displayed in ListView)
+      var users = userProvider.usersByCategory;
+
+      // Apply Date Range Filter (same as in build method)
+      if (_selectedDateRange != null) {
+        users = users.where((user) {
+          if (user.timestamps.isEmpty) return false;
+          try {
+            final createdAt = DateTime.parse(user.timestamps);
+            return createdAt.isAfter(
+                  _selectedDateRange!.start.subtract(Duration(days: 1)),
+                ) &&
+                createdAt.isBefore(
+                  _selectedDateRange!.end.add(Duration(days: 1)),
+                );
+          } catch (e) {
+            return false;
+          }
+        }).toList();
+      }
+
+      if (users.isEmpty) {
+        // Show warning if no users to export
+        toastification.show(
+          context: context,
+          type: ToastificationType.warning,
+          style: ToastificationStyle.flatColored,
+          title: Text('No users to export'),
+          description: Text('Please adjust your filters to include users.'),
+          autoCloseDuration: Duration(seconds: 3),
+          alignment: Alignment.topRight,
+        );
+        setState(() {
+          _isDownloading = false;
+        });
+        return;
+      }
+
+      // Call the Excel export service
+      bool success = await ExcelExportService.exportUsersToExcel(users);
+
+      if (success) {
+        // Show success message
+        toastification.show(
+          context: context,
+          type: ToastificationType.success,
+          style: ToastificationStyle.flatColored,
+          title: Text('Excel Downloaded'),
+          description: Text('${users.length} user(s) exported successfully.'),
+          autoCloseDuration: Duration(seconds: 3),
+          alignment: Alignment.topRight,
+        );
+      } else {
+        // Show error message
+        toastification.show(
+          context: context,
+          type: ToastificationType.error,
+          style: ToastificationStyle.flatColored,
+          title: Text('Download Failed'),
+          description: Text('Failed to export users to Excel.'),
+          autoCloseDuration: Duration(seconds: 3),
+          alignment: Alignment.topRight,
+        );
+      }
+    } catch (e) {
+      // Show error message
+      toastification.show(
+        context: context,
+        type: ToastificationType.error,
+        style: ToastificationStyle.flatColored,
+        title: Text('Error'),
+        description: Text('An error occurred: ${e.toString()}'),
+        autoCloseDuration: Duration(seconds: 3),
+        alignment: Alignment.topRight,
+      );
+    } finally {
+      setState(() {
+        _isDownloading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     AccessCodeProvider accessCodeProvider = Provider.of<AccessCodeProvider>(
@@ -781,6 +873,71 @@ class _UserScreenState extends State<UserScreen>
                             _buildFilterButton(context, 'Disabled'),
                             _buildFilterButton(context, 'Deleted'),
                           ],
+                        ),
+                        SizedBox(width: 16),
+                        // Download Excel Button
+                        Consumer<UserProvider>(
+                          builder: (context, userProvider, _) {
+                            return InkWell(
+                              onTap: _isDownloading
+                                  ? null
+                                  : () => _downloadExcel(userProvider),
+                              borderRadius: BorderRadius.circular(30),
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _isDownloading
+                                      ? Colors.grey.shade300
+                                      : Colors.green.shade700,
+                                  borderRadius: BorderRadius.circular(30),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 6,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (_isDownloading)
+                                      SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                Colors.white,
+                                              ),
+                                        ),
+                                      )
+                                    else
+                                      Icon(
+                                        Icons.download_rounded,
+                                        size: 16,
+                                        color: Colors.white,
+                                      ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      _isDownloading
+                                          ? 'Downloading...'
+                                          : 'Download Excel',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
                         ),
                         Spacer(), // Push Date Filter to the right
                         // Date Filter

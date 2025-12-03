@@ -51,6 +51,8 @@ class _FeatureRequestScreenState extends State<FeatureRequestScreen> {
     }
   }
 
+  String _selectedFilter = 'All';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -83,37 +85,125 @@ class _FeatureRequestScreenState extends State<FeatureRequestScreen> {
               );
             }
 
-            if (provider.featureRequests.isEmpty) {
-              return const Center(child: Text('No feature requests found'));
-            }
+            // Filter logic
+            final filteredRequests = _selectedFilter == 'All'
+                ? provider.featureRequests
+                : provider.featureRequests
+                      .where(
+                        (request) =>
+                            request.status.toLowerCase() ==
+                            _selectedFilter.toLowerCase(),
+                      )
+                      .toList();
 
-            // Using LayoutBuilder to make grid responsive
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                final crossAxisCount = _calculateCrossAxisCount(
-                  constraints.maxWidth,
-                );
+            return Column(
+              children: [
+                _buildFilterButtons(),
+                Expanded(
+                  child: filteredRequests.isEmpty
+                      ? const Center(child: Text('No feature requests found'))
+                      : LayoutBuilder(
+                          builder: (context, constraints) {
+                            final crossAxisCount = _calculateCrossAxisCount(
+                              constraints.maxWidth,
+                            );
 
-                return GridView.builder(
-                  controller: _scrollController,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(16),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    childAspectRatio: crossAxisCount == 1 ? 1.2 : 1.0,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    mainAxisExtent: 250, // Fixed height for each card
-                  ),
-                  itemCount: provider.featureRequests.length,
-                  itemBuilder: (context, index) {
-                    final request = provider.featureRequests[index];
-                    return FeatureRequestCard(request: request);
-                  },
-                );
-              },
+                            return GridView.builder(
+                              controller: _scrollController,
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding: const EdgeInsets.all(16),
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: crossAxisCount,
+                                    childAspectRatio: crossAxisCount == 1
+                                        ? 1.2
+                                        : 1.0,
+                                    crossAxisSpacing: 16,
+                                    mainAxisSpacing: 16,
+                                    mainAxisExtent:
+                                        250, // Fixed height for each card
+                                  ),
+                              itemCount: filteredRequests.length,
+                              itemBuilder: (context, index) {
+                                final request = filteredRequests[index];
+                                return FeatureRequestCard(request: request);
+                              },
+                            );
+                          },
+                        ),
+                ),
+              ],
             );
           },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterButtons() {
+    final filters = ['All', 'Pending', 'Accepted', 'Declined'];
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+      color: Colors.transparent, // Removed white background
+      child: Center(
+        // Center the filters
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: filters.map((filter) {
+              final isSelected = _selectedFilter == filter;
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      _selectedFilter = filter;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(30),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? const Color(0xFF6F61EF)
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(
+                        color: isSelected
+                            ? const Color(0xFF6F61EF)
+                            : Colors.grey.shade300,
+                        width: 1,
+                      ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: const Color(0xFF6F61EF).withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Text(
+                      filter,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.grey[700],
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
         ),
       ),
     );
@@ -161,7 +251,7 @@ class _FeatureRequestCardState extends State<FeatureRequestCard> {
           ),
           ElevatedButton(
             onPressed: () {
-              if(_noteController.text.trim().isEmpty){
+              if (_noteController.text.trim().isEmpty) {
                 ToastMessage.error("Error", "Please add a note");
                 return;
               }
@@ -173,8 +263,6 @@ class _FeatureRequestCardState extends State<FeatureRequestCard> {
                 featureRequestStatusMessage: _noteController.text.trim(),
               );
               Navigator.of(context).pop();
-
-
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: action == FeatureRequestStatus.accepted.name

@@ -4,6 +4,7 @@ import 'package:admin_panel/utils/date_formater.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../navigation/getX_navigation.dart';
 import '../product/product_details_screen/bike/bike_details_screen.dart';
@@ -41,6 +42,14 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
         listen: false,
       ).getProductByUserId(userId);
     });
+  }
+
+  Future<void> _launchURL(String urlString) async {
+    if (urlString.isEmpty) return;
+    final Uri url = Uri.parse(urlString);
+    if (!await launchUrl(url)) {
+      throw Exception('Could not launch $url');
+    }
   }
 
   @override
@@ -187,19 +196,29 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                   ),
                 ],
               ),
-              child: CircleAvatar(
-                radius: 60,
-                backgroundColor: Colors.white,
-                backgroundImage: user.userProfileImage.isNotEmpty
-                    ? NetworkImage(
-                        user.userProfileImage.startsWith('http')
-                            ? user.userProfileImage
-                            : 'https://api.bhavnika.shop${user.userProfileImage}',
-                      )
-                    : null,
-                child: user.userProfileImage.isEmpty
-                    ? const Icon(Icons.person, size: 60, color: Colors.grey)
-                    : null,
+              child: GestureDetector(
+                onTap: () {
+                  if (user.userProfileImage.isNotEmpty) {
+                    final fullUrl = user.userProfileImage.startsWith('http')
+                        ? user.userProfileImage
+                        : 'https://api.bhavnika.shop${user.userProfileImage}';
+                    _launchURL(fullUrl);
+                  }
+                },
+                child: CircleAvatar(
+                  radius: 60,
+                  backgroundColor: Colors.white,
+                  backgroundImage: user.userProfileImage.isNotEmpty
+                      ? NetworkImage(
+                          user.userProfileImage.startsWith('http')
+                              ? user.userProfileImage
+                              : 'https://api.bhavnika.shop${user.userProfileImage}',
+                        )
+                      : null,
+                  child: user.userProfileImage.isEmpty
+                      ? const Icon(Icons.person, size: 60, color: Colors.grey)
+                      : null,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -474,15 +493,23 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
             ],
           ),
           child: url.isNotEmpty
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Image.network(
-                    url.startsWith('http')
+              ? GestureDetector(
+                  onTap: () {
+                    final fullUrl = url.startsWith('http')
                         ? url
-                        : 'https://api.bhavnika.shop$url',
-                    fit: BoxFit.cover,
-                    errorBuilder: (c, o, s) => const Center(
-                      child: Icon(Icons.broken_image, color: Colors.grey),
+                        : 'https://api.bhavnika.shop$url';
+                    _launchURL(fullUrl);
+                  },
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.network(
+                      url.startsWith('http')
+                          ? url
+                          : 'https://api.bhavnika.shop$url',
+                      fit: BoxFit.cover,
+                      errorBuilder: (c, o, s) => const Center(
+                        child: Icon(Icons.broken_image, color: Colors.grey),
+                      ),
                     ),
                   ),
                 )
