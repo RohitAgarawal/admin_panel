@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:admin_panel/local_Storage/admin_shredPreferences.dart';
 import 'package:admin_panel/model/report_model/report_model.dart';
+import 'package:admin_panel/services/excel_export_service.dart';
 import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 
@@ -13,7 +14,6 @@ class ReportProvider extends ChangeNotifier {
 
   int _reportCount = 0;
   int get reportCountValue => _reportCount;
-
 
   List<ReportModel> _reports = [];
   List<ReportModel> get reports => _reports;
@@ -32,7 +32,7 @@ class ReportProvider extends ChangeNotifier {
       setLoading(true);
       var headers = {
         'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token'
+        'Authorization': 'Bearer $token',
       };
       var request = http.Request(
         'GET',
@@ -57,16 +57,20 @@ class ReportProvider extends ChangeNotifier {
     }
   }
 
-
-  Future<void> reportsDetailsByReportId(String reportId)async{
+  Future<void> reportsDetailsByReportId(String reportId) async {
     try {
       setLoading(true);
       String token = await AdminSharedPreferences().getAuthToken();
       var headers = {
         'Content-Type': 'application/json',
-        'Authorization' : 'Bearer $token'
+        'Authorization': 'Bearer $token',
       };
-      var request = http.Request('GET', Uri.parse('${Apis.BASE_URL}/admin/get_report_product_by_id?reportId=$reportId'));
+      var request = http.Request(
+        'GET',
+        Uri.parse(
+          '${Apis.BASE_URL}/admin/get_report_product_by_id?reportId=$reportId',
+        ),
+      );
       request.headers.addAll(headers);
       http.StreamedResponse response = await request.send();
       final responseBody = await response.stream.bytesToString();
@@ -82,8 +86,7 @@ class ReportProvider extends ChangeNotifier {
     } catch (e) {
       print("Exception in reportsDetailsByReportId: $e");
       return null;
-    }
-    finally {
+    } finally {
       setLoading(false);
       notifyListeners();
     }
@@ -94,7 +97,7 @@ class ReportProvider extends ChangeNotifier {
       String token = await AdminSharedPreferences().getAuthToken();
       var headers = {
         'Content-Type': 'application/json',
-        'Authorization' : 'Bearer $token'
+        'Authorization': 'Bearer $token',
       };
       var request = http.Request(
         'GET',
@@ -117,4 +120,98 @@ class ReportProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> updateReportStatus(
+    String reportId,
+    String status,
+    String note,
+  ) async {
+    try {
+      setLoading(true);
+      String token = await AdminSharedPreferences().getAuthToken();
+      var headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+      var body = json.encode({
+        "reportId": reportId,
+        "status": status,
+        "note": note,
+      });
+
+      var request = http.Request(
+        'PUT',
+        Uri.parse('${Apis.BASE_URL}/admin/update-report-status'),
+      );
+      request.body = body;
+      request.headers.addAll(headers);
+
+      http.StreamedResponse response = await request.send();
+      await response.stream.bytesToString();
+
+      if (response.statusCode == 200) {
+        await getReports();
+        if (_selectedReport != null && _selectedReport!.id == reportId) {
+          await reportsDetailsByReportId(reportId);
+        }
+        return true;
+      } else {
+        print("Error: ${response.reasonPhrase}");
+        return false;
+      }
+    } catch (e) {
+      print("Exception in updateReportStatus: $e");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // --- Excel Export Logic ---
+  bool _isDownloading = false;
+  bool get isDownloading => _isDownloading;
+
+  void setDownloading(bool value) {
+    _isDownloading = value;
+    notifyListeners();
+  }
+
+  Future<bool> downloadReportsExcel(String statusFilter) async {
+    try {
+      setDownloading(true);
+      String token = await AdminSharedPreferences().getAuthToken();
+      var headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+
+      var request = http.Request(
+        'GET',
+        Uri.parse('${Apis.BASE_URL}/admin/export-reports?status=$statusFilter'),
+      );
+      request.headers.addAll(headers);
+
+      http.StreamedResponse response = await request.send();
+      String responseBody = await response.stream.bytesToString();
+
+      if (response.statusCode == 200) {
+        Map<String, dynamic> jsonData = json.decode(responseBody);
+        List<ReportModel> exportData = (jsonData['data'] as List<dynamic>).map((
+          e,
+        ) {
+          return ReportModel.fromJson(e as Map<String, dynamic>);
+        }).toList();
+
+        // Use the service to download
+        return await ExcelExportService.exportReportsToExcel(exportData);
+      } else {
+        print("Error fetching reports for export: ${response.reasonPhrase}");
+        return false;
+      }
+    } catch (e) {
+      print("Exception in downloadReportsExcel: $e");
+      return false;
+    } finally {
+      setDownloading(false);
+    }
+  }
 }

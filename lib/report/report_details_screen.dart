@@ -30,382 +30,589 @@ class ReportDetailsScreen extends StatefulWidget {
 
 class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
   String? reportId;
+  String? _selectedStatus;
+  final TextEditingController _noteController = TextEditingController();
+  bool _isUpdating = false;
+
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     reportId = Get.arguments;
-    print("Report ID: $reportId");
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final reportProvider = Provider.of<ReportProvider>(context, listen: false);
-      reportProvider.reportsDetailsByReportId(reportId!);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final reportProvider = Provider.of<ReportProvider>(
+        context,
+        listen: false,
+      );
+      await reportProvider.reportsDetailsByReportId(reportId!);
+      if (reportProvider.selectedReport != null) {
+        setState(() {
+          _selectedStatus = reportProvider.selectedReport!.status.toLowerCase();
+          _noteController.text = reportProvider.selectedReport!.note;
+        });
+      }
     });
   }
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
+
   void openInNewTab(String url) {
     web.window.open(url, '_blank');
   }
+
+  Future<void> _updateStatus(ReportProvider reportProvider) async {
+    if (_selectedStatus == null) return;
+    setState(() {
+      _isUpdating = true;
+    });
+    bool success = await reportProvider.updateReportStatus(
+      reportId!,
+      _selectedStatus!,
+      _noteController.text,
+    );
+    setState(() {
+      _isUpdating = false;
+    });
+
+    if (success) {
+      Get.snackbar(
+        "Success",
+        "Report status updated successfully",
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } else {
+      Get.snackbar(
+        "Error",
+        "Failed to update report status",
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    UserProvider userProvider = Provider.of<UserProvider>(context, listen: true);
+    UserProvider userProvider = Provider.of<UserProvider>(
+      context,
+      listen: true,
+    );
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text("Report Details"),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          "Report Details",
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
+        iconTheme: const IconThemeData(color: Colors.black),
         actions: [
           Consumer<ReportProvider>(
-            builder: (context, reportProvider, child) {
-              final report = reportProvider.selectedReport;
-
-              if (report == null) {
-                return Center(child: Text("No report details available."));
-              }
-
-              return SizedBox(
-                width: 100,
-                child: IconButton(
-                  onPressed: () async {
-                    await userProvider
-                        .userActiveInactive(report.userId); // Use the correct user ID
-
-                    // Optional: Update active state if needed
-                    setState(() {
-                      report.isActive = !report.isActive;
-                    });
-                  },
-                  icon: Icon(
-                    report.isActive ? Icons.visibility : Icons.visibility_off,
-                    color: report.isActive ? Colors.green : Colors.red,
-                  ),
+            builder: (context, provider, child) {
+              final report = provider.selectedReport;
+              if (report == null) return SizedBox();
+              return IconButton(
+                onPressed: () async {
+                  await userProvider.userActiveInactive(report.userId);
+                  setState(() {
+                    report.isActive = !report.isActive;
+                  });
+                },
+                icon: Icon(
+                  report.isActive ? Icons.visibility : Icons.visibility_off,
+                  color: report.isActive ? Colors.green : Colors.red,
                 ),
               );
             },
           ),
         ],
-        ),
-      backgroundColor: Colors.white,
-       body: Stack(
-         children: [
-           Consumer<ReportProvider>(
-            builder: (context, reportProvider, child) {
-                 final report = reportProvider.selectedReport;
-                 if (report == null) {
-            return Center(child: Text("No report details available."));
-                 }
+      ),
+      body: Consumer<ReportProvider>(
+        builder: (context, reportProvider, child) {
+          final report = reportProvider.selectedReport;
+          if (reportProvider.isLoading && report == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (report == null) {
+            return const Center(child: Text("No report details available."));
+          }
 
-                 return ListView(
-            padding: const EdgeInsets.all(16),
+          return Stack(
             children: [
-              // Image
-              InkWell(
-                onTap: () {
-                  openInNewTab('https://api.bhavnika.shop${report.image}');
-                },
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    'https://api.bhavnika.shop${report.image}',
-                    height: 300,
-                    width: 300,
+              SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Main layout: Left (Info) and Right (Details) for large screens if needed,
+                    // but keeping it simple column for now as per admin panel usage
 
-                    errorBuilder: (context, error, stackTrace) =>
-                        Center(child: Icon(Icons.broken_image, size: 100)),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Card(
-                color: Colors.white,
-                elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("📋 Report Details", style: Theme.of(context).textTheme.titleMedium),
-                      const Divider(height: 20),
-                      Text("Created At: ${DateFormat('d MMMM yyyy, hh:mm:ss a').format(DateTime.parse(report.createdAt).toLocal())}"),
-                      Text("Model Name: ${report.modelName}"),
-                      Text("Complaint: ${report.description}"),
-                    ],
-                  ),
-                ),
-              ),
-              // Row(
-              //   children: [
-              //     Expanded(child:
-              //     Card(
-              //       color: Colors.white,
-              //       elevation: 4,
-              //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              //       child: Padding(
-              //         padding: const EdgeInsets.all(16),
-              //         child: Column(
-              //           crossAxisAlignment: CrossAxisAlignment.start,
-              //           children: [
-              //             Text("🧑 Product User Details", style: Theme.of(context).textTheme.titleMedium),
-              //             const Divider(height: 20),
-              //             Text("FName: ${report.productUserFName}"),
-              //             Text("LName: ${report.productUserLName}"),
-              //             Text("DOB: ${report.productUserDOB}"),
-              //             Text("Phone: ${report.productUserPhone}"),
-              //             Text("Email: ${report.productUserEmail}"),
-              //             Text("State: ${report.productUserState}"),
-              //             Text("District: ${report.productUserDistrict}"),
-              //             Text("Area: ${report.productUserArea}"),
-              //             Text("Occupation : ${report.productUserOccupation}"),
-              //           ],
-              //         ),
-              //       ),
-              //     ),
-              //     ),
-              //     const SizedBox(width: 50,),
-              //     Expanded(child:
-              //     Card(
-              //       color: Colors.white,
-              //       elevation: 4,
-              //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              //       child: Padding(
-              //         padding: const EdgeInsets.all(16),
-              //         child: Column(
-              //           crossAxisAlignment: CrossAxisAlignment.start,
-              //           children: [
-              //             Text("📋 Report User Details", style: Theme.of(context).textTheme.titleMedium),
-              //             const Divider(height: 20),
-              //             Text("Created At: ${DateFormat('d MMMM yyyy, hh:mm:ss a').format(DateTime.parse(report.createdAt).toLocal())}"),
-              //             Text("Model Name: ${report.modelName}"),
-              //             Text("Complaint: ${report.description}"),
-              //             Text("User Name: ${report.userName}"),
-              //             Text("Email: ${report.userEmail}"),
-              //             Text("State: ${report.userState}"),
-              //             Text("District: ${report.userDistrict}"),
-              //             Text("Area: ${report.userArea}"),
-              //             //Text("Occupation: ${report.userOccupation}"),
-              //           ],
-              //         ),
-              //       ),
-              //     ),
-              //     )
-              //   ],
-              // ),
-              // // Product User Details
-
-              Row(
-                children: [
-                  // Product User Card
-                  Expanded(
-                    child: Card(
-                      color: Colors.white,
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text("🧑 Product User Details", style: Theme.of(context).textTheme.titleMedium),
-                            const Divider(height: 20),
-                            Text("FName: ${report.productUserFName}"),
-                            Text("LName: ${report.productUserLName}"),
-                            Text("Phone: ${report.productUserPhone}"),
-                            Text("Email: ${report.productUserEmail}"),
-                            const SizedBox(height: 10),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton.icon(
-                                onPressed: () {
-                                  Get.toNamed(
-                                    UserDetailsScreen.routeName,
-                                    arguments: report.productUserId, // make sure this ID is available in report
-                                  );
-                                },
-                                icon: const Icon(Icons.info_outline),
-                                label: const Text("More Details"),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(width: 50),
-
-                  // Report User Card
-                  Expanded(
-                    child: Card(
-                      color: Colors.white,
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text("📋 Report User Details", style: Theme.of(context).textTheme.titleMedium),
-                            const Divider(height: 20),
-                            Text("FName: ${report.userName.split(" ").first}"),
-                            Text("LName: ${report.userName.split(" ").last}"),
-                            Text("Phone: ${report.userPhone}"),
-                            Text("Email: ${report.userEmail}"),
-                            const SizedBox(height: 10),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton.icon(
-                                onPressed: () {
-                                  Get.toNamed(
-                                    UserDetailsScreen.routeName,
-                                    arguments: report.userId, // make sure this ID is available in report
-                                  );
-                                },
-                                icon: const Icon(Icons.info_outline),
-                                label: const Text("More Details"),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // Product Details
-              Card(
-                color: Colors.white,
-                elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("📦 Product Details", style: Theme.of(context).textTheme.titleMedium),
-                      const Divider(height: 20),
-                      Text("Title: ${report.productTitle}"),
-                      Text("Description: ${report.productDescription}"),
-                      Text("Price: ${report.productPrice}"),
-                      Text("Category: ${report.productCategory}"),
-                      Text("Address: ${report.productAddress}"),
-                      const SizedBox(height: 10),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton.icon(
-                          onPressed: () {
-                            print("Product ID: ${report.productId}");
-                            print("Model Name: ${report.modelName}");
-                            navigateToProductFormScreen(
-                              report.modelName,
-                              report.productId,
+                    // Top Section: Image & Basic Info
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        InkWell(
+                          onTap: () {
+                            openInNewTab(
+                              'https://api.bhavnika.shop${report.image}',
                             );
                           },
-                          icon: const Icon(Icons.remove_red_eye_outlined),
-                          label: const Text("View Product"),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(
+                              'https://api.bhavnika.shop${report.image}',
+                              height: 150,
+                              width: 150,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Container(
+                                    color: Colors.grey[200],
+                                    height: 150,
+                                    width: 150,
+                                    child: const Icon(
+                                      Icons.broken_image,
+                                      size: 50,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Model: ${report.modelName.toUpperCase()}",
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                "Report ID: ${report.id}",
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                "Date: ${DateFormat('d MMM yyyy, hh:mm a').format(DateTime.parse(report.createdAt).toLocal())}",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              // Status Badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _getStatusColor(
+                                    report.status,
+                                  ).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: _getStatusColor(report.status),
+                                  ),
+                                ),
+                                child: Text(
+                                  report.status.toUpperCase(),
+                                  style: TextStyle(
+                                    color: _getStatusColor(report.status),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Update Status Section
+                    Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Update Status",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Divider(height: 24),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: DropdownButtonFormField<String>(
+                                    value: _selectedStatus,
+                                    decoration: InputDecoration(
+                                      labelText: "Status",
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 12,
+                                          ),
+                                    ),
+                                    items: const [
+                                      DropdownMenuItem(
+                                        value: "pending",
+                                        child: Text("Pending"),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: "resolve",
+                                        child: Text("Resolve"),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: "decline",
+                                        child: Text("Decline"),
+                                      ),
+                                    ],
+                                    onChanged: (val) {
+                                      setState(() {
+                                        _selectedStatus = val;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  flex: 2,
+                                  child: TextFormField(
+                                    controller: _noteController,
+                                    decoration: InputDecoration(
+                                      labelText: "Admin Note",
+                                      hintText: "Add a note...",
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 12,
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: ElevatedButton.icon(
+                                onPressed: _isUpdating
+                                    ? null
+                                    : () => _updateStatus(reportProvider),
+                                icon: _isUpdating
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(Icons.save),
+                                label: const Text("Save Changes"),
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 12,
+                                  ),
+                                  backgroundColor: Colors.blue[800],
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Details Grid
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Report & Product Info
+                        Expanded(
+                          child: Card(
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    "📋 Complaint Details",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const Divider(height: 24),
+                                  _buildDetailRow(
+                                    "Description",
+                                    report.description,
+                                  ),
+                                  const SizedBox(height: 24),
+                                  const Text(
+                                    "📦 Product Details",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const Divider(height: 24),
+                                  _buildDetailRow("Title", report.productTitle),
+                                  _buildDetailRow(
+                                    "Category",
+                                    report.productCategory,
+                                  ),
+                                  _buildDetailRow("Price", report.productPrice),
+                                  _buildDetailRow(
+                                    "Address",
+                                    report.productAddress,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton.icon(
+                                      onPressed: () {
+                                        navigateToProductFormScreen(
+                                          report.modelName,
+                                          report.productId,
+                                        );
+                                      },
+                                      icon: const Icon(Icons.open_in_new),
+                                      label: const Text("View Full Product"),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                        // Users Info
+                        Expanded(
+                          child: Card(
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    "👤 Reporter Details",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const Divider(height: 24),
+                                  _buildDetailRow("Name", report.userName),
+                                  _buildDetailRow("Email", report.userEmail),
+                                  _buildDetailRow("Phone", report.userPhone),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton(
+                                      onPressed: () {
+                                        Get.toNamed(
+                                          UserDetailsScreen.routeName,
+                                          arguments: report.userId,
+                                        );
+                                      },
+                                      child: const Text("View Profile"),
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 24),
+                                  const Text(
+                                    "👤 Product Owner Details",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const Divider(height: 24),
+                                  _buildDetailRow(
+                                    "Name",
+                                    "${report.productUserFName} ${report.productUserLName}",
+                                  ),
+                                  _buildDetailRow(
+                                    "Email",
+                                    report.productUserEmail,
+                                  ),
+                                  _buildDetailRow(
+                                    "Phone",
+                                    report.productUserPhone,
+                                  ),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton(
+                                      onPressed: () {
+                                        Get.toNamed(
+                                          UserDetailsScreen.routeName,
+                                          arguments: report.productUserId,
+                                        );
+                                      },
+                                      child: const Text("View Profile"),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 40),
+                  ],
                 ),
               ),
-
-              const SizedBox(height: 16),
-
-              // Report User Details
-
+              if (userProvider.isLoading)
+                Container(
+                  color: Colors.black12,
+                  child: const Center(child: LoadingWidget()),
+                ),
             ],
-                 );
-               },
-               ),
-           userProvider.isLoading ? Center(child: LoadingWidget()) : SizedBox(),
-         ],
-       ),
+          );
+        },
+      ),
     );
   }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              "$label:",
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value.isEmpty ? "N/A" : value,
+              style: const TextStyle(color: Colors.black87),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'resolve':
+        return Colors.green;
+      case 'decline':
+        return Colors.red;
+      case 'pending':
+      default:
+        return Colors.orange;
+    }
+  }
+
   void navigateToProductFormScreen(String modelName, String productId) {
     print(modelName);
-    Map<String, dynamic> args = {"productId": productId, "modelName": modelName,"isEdit": false};
+    Map<String, dynamic> args = {
+      "productId": productId,
+      "modelName": modelName,
+      "isEdit": false,
+    };
     switch (modelName.toLowerCase()) {
       case "bike":
-        {
-          GetxNavigation.next(BikeDetailsScreen.routeName, arguments: args);
-          break;
-        }
+        GetxNavigation.next(BikeDetailsScreen.routeName, arguments: args);
+        break;
       case "property":
-        {
-          GetxNavigation.next(PropertyDetailsScreen.routeName, arguments: args);
-          // GetxNavigation.next(Property.routeName,arguments: productSubType);
-          break;
-        }
+        GetxNavigation.next(PropertyDetailsScreen.routeName, arguments: args);
+        break;
       case "car":
-        {
-          GetxNavigation.next(CarDetailsScreen.routeName, arguments: args);
-          break;
-        }
+        GetxNavigation.next(CarDetailsScreen.routeName, arguments: args);
+        break;
       case "book_sport_hobby":
-        {
-          GetxNavigation.next(
-            BookSportsHobbyDetailsScreen.routeName,
-            arguments: args,
-          );
-          break;
-        }
+        GetxNavigation.next(
+          BookSportsHobbyDetailsScreen.routeName,
+          arguments: args,
+        );
+        break;
       case "electronic":
-        {
-          GetxNavigation.next(
-            ElectronicsDetailsScreen.routeName,
-            arguments: args,
-          );
-          break;
-        }
+        GetxNavigation.next(
+          ElectronicsDetailsScreen.routeName,
+          arguments: args,
+        );
+        break;
       case "furniture":
-        {
-          GetxNavigation.next(
-            FurnitureDetailsScreen.routeName,
-            arguments: args,
-          );
-          break;
-        }
+        GetxNavigation.next(FurnitureDetailsScreen.routeName, arguments: args);
+        break;
       case "job":
-        {
-          GetxNavigation.next(JobDetailsScreen.routeName, arguments: args);
-          break;
-        }
+        GetxNavigation.next(JobDetailsScreen.routeName, arguments: args);
+        break;
       case "pet":
-        {
-          GetxNavigation.next(PetDetailsScreen.routeName, arguments: args);
-          break;
-        }
+        GetxNavigation.next(PetDetailsScreen.routeName, arguments: args);
+        break;
       case "smart_phone":
-        {
-          GetxNavigation.next(
-            SmartPhoneDetailsScreen.routeName,
-            arguments: args,
-          );
-          // GetxNavigation.next(SmartPhone.routeName,arguments: productSubType);
-          break;
-        }
+        GetxNavigation.next(SmartPhoneDetailsScreen.routeName, arguments: args);
+        break;
       case "services":
-        {
-          GetxNavigation.next(ServicesDetailScreen.routeName, arguments: args);
-          break;
-        }
+        GetxNavigation.next(ServicesDetailScreen.routeName, arguments: args);
+        break;
       case "other":
-        {
-          GetxNavigation.next(OtherProductDetails.routeName, arguments: args);
-          // GetxNavigation.next(OtherScreen.routeName,arguments: productSubType);
-          break;
-        }
+        GetxNavigation.next(OtherProductDetails.routeName, arguments: args);
+        break;
       default:
-        {
-          Get.snackbar(
-            "Oops!!!!!",
-            "Something went wrong while selecting option.",
-            backgroundColor: Colors.red,
-            colorText: Colors.white,
-            snackPosition: SnackPosition.BOTTOM,
-          );
-        }
+        Get.snackbar(
+          "Oops!!!!!",
+          "Something went wrong while selecting option.",
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
     }
   }
 }

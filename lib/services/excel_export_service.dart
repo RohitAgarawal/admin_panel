@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:admin_panel/model/report_model/report_model.dart';
 import 'package:admin_panel/model/user_model/user_model.dart';
 import 'package:excel/excel.dart';
 import 'package:intl/intl.dart';
@@ -208,5 +209,117 @@ class ExcelExportService {
 
     // Clean up
     html.Url.revokeObjectUrl(url);
+  }
+
+  /// Exports a list of reports to an Excel file and triggers download
+  static Future<bool> exportReportsToExcel(List<ReportModel> reports) async {
+    try {
+      // Create a new Excel document
+      var excel = Excel.createExcel();
+
+      // Get the default sheet
+      Sheet sheetObject = excel['Sheet1'];
+
+      // Rename sheet
+      excel.rename('Sheet1', 'Reports Data');
+      sheetObject = excel['Reports Data'];
+
+      // Define headers
+      List<String> headers = [
+        'Report ID',
+        'Model Name',
+        'Status',
+        'Admin Note',
+        'Created At',
+        'Description',
+        // Reporter Details
+        'Reporter Name',
+        'Reporter Email',
+        'Reporter Phone',
+        // Product Details
+        'Product Title',
+        'Product Category',
+        'Product Price',
+        'Product Address',
+        // Product Owner Details
+        'Product Owner Name',
+        'Product Owner Email',
+        'Product Owner Phone',
+      ];
+
+      // Add headers
+      for (int i = 0; i < headers.length; i++) {
+        var cell = sheetObject.cell(
+          CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0),
+        );
+        cell.value = TextCellValue(headers[i]);
+
+        // Style header cells
+        cell.cellStyle = CellStyle(
+          bold: true,
+          fontSize: 12,
+          backgroundColorHex: ExcelColor.fromHexString(
+            '#2196F3',
+          ), // Blue for reports
+          fontColorHex: ExcelColor.fromHexString('#FFFFFF'),
+        );
+      }
+
+      // Add report data rows
+      for (int i = 0; i < reports.length; i++) {
+        ReportModel report = reports[i];
+        int rowIndex = i + 1;
+
+        List<String> rowData = [
+          report.id,
+          report.modelName,
+          report.status.toUpperCase(),
+          report.note,
+          _formatDateTime(report.createdAt),
+          report.description,
+          // Reporter
+          report.userName,
+          report.userEmail,
+          report.userPhone,
+          // Product
+          report.productTitle,
+          report.productCategory,
+          report.productPrice,
+          report.productAddress,
+          // Owner
+          "${report.productUserFName} ${report.productUserLName}",
+          report.productUserEmail,
+          report.productUserPhone,
+        ];
+
+        for (int j = 0; j < rowData.length; j++) {
+          var cell = sheetObject.cell(
+            CellIndex.indexByColumnRow(columnIndex: j, rowIndex: rowIndex),
+          );
+          cell.value = TextCellValue(rowData[j]);
+        }
+      }
+
+      // Auto-fit columns
+      for (int i = 0; i < headers.length; i++) {
+        sheetObject.setColumnWidth(i, 25);
+      }
+
+      // Generate and download
+      var fileBytes = excel.encode();
+      if (fileBytes == null) return false;
+
+      String timestamp = DateFormat(
+        'yyyy-MM-dd_HH-mm-ss',
+      ).format(DateTime.now());
+      String filename = 'reports_data_$timestamp.xlsx';
+
+      _downloadFile(fileBytes, filename);
+
+      return true;
+    } catch (e) {
+      print('Error exporting reports to Excel: $e');
+      return false;
+    }
   }
 }

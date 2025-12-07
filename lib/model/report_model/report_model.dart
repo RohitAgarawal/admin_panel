@@ -50,6 +50,8 @@ class ReportModel {
   String productUserOccupation;
   String productUserAadhaarNumber;
   bool isActive = true;
+  String status;
+  String note;
 
   // final String productUserEmail;
 
@@ -96,6 +98,8 @@ class ReportModel {
     required this.isActive,
     required this.userLName,
     required this.productUserId,
+    required this.status,
+    required this.note,
     // required this.userPhone,
     // required this.userDOB,
     // required this.userOccupation,
@@ -119,14 +123,25 @@ class ReportModel {
       userName: getLastIndexOfData(user['fName'] ?? []),
       userEmail: user['email'] ?? '',
       userLName: getLastIndexOfData(user['LName'] ?? []),
-      // userDOB: getLastIndexOfData(user['DOB'] ?? []),
-      // userOccupation: getLastIndexOfData(user['occupation'] ?? []),
-      // userPhone: getLastIndexOfData(user['phone'] ?? []),
-      productTitle: getLastIndexOfData(product['title'] ?? []),
+      userDOB: getLastIndexOfData(user['DOB'] ?? []),
+      userOccupation: getLastIndexOfData(user['occupation'] ?? []),
+      userPhone: getLastIndexOfData(user['phone'] ?? []),
+      productTitle: getLastIndexOfData(
+        product['adTitle'] ?? [],
+      ), // Fixed: title -> adTitle
       productDescription: getLastIndexOfData(product['description'] ?? []),
       productPrice: getLastIndexOfData(product['price'] ?? []),
       productCategory: product['categories'] ?? '',
-      productAddress: getLastIndexOfData(product['address1'] ?? []),
+      // Fixed: Construct address from multiple fields
+      productAddress:
+          "${getLastIndexOfData(product['street1'] ?? [])}, "
+                  "${getLastIndexOfData(product['street2'] ?? [])}, "
+                  "${getLastIndexOfData(product['area'] ?? [])}, "
+                  "${getLastIndexOfData(product['city'] ?? [])}, "
+                  "${getLastIndexOfData(product['state'] ?? [])}, "
+                  "${getLastIndexOfData(product['pincode'] ?? [])}"
+              .replaceAll(RegExp(r'^, | , '), '') // Clean up leading commas
+              .trim(),
       productUserFName: getLastIndexOfData(product['userId']['fName'] ?? []),
       productUserLName: getLastIndexOfData(product['userId']['LName'] ?? []),
       productUserPinCode: getLastIndexOfData(
@@ -152,15 +167,17 @@ class ReportModel {
       userDistrict: getLastIndexOfData(user['city'] ?? []),
       userArea: getLastIndexOfData(user['area'] ?? []),
       isActive: json['isActive'] ?? true,
-      userAadhaarNumber: '',
-      userDOB: '',
-      userGender: '',
-      userMName: '',
-      userOccupation: '',
-      userPhone: '',
-      userPinCode: '',
-      userStreet1: '',
-      userStreet2: '',
+      userAadhaarNumber: getLastIndexOfData(user['aadhaarNumber'] ?? []),
+      // userDOB: '', // removed empty assignment
+      userGender: getLastIndexOfData(user['gender'] ?? []),
+      userMName: getLastIndexOfData(user['mName'] ?? []),
+      // userOccupation: '', // removed empty assignment
+      // userPhone: '', // removed empty assignment
+      userPinCode: getLastIndexOfData(user['pinCode'] ?? []),
+      userStreet1: getLastIndexOfData(user['street1'] ?? []),
+      userStreet2: getLastIndexOfData(user['street2'] ?? []),
+      status: json['status'] ?? 'pending',
+      note: json['note'] ?? '',
     );
   }
 
