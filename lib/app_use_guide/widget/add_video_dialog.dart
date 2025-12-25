@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../provider/app_use_guide_provider.dart';
 import 'drop_zone.dart';
-import 'package:http/http.dart' as http;
 
 class AddVideoDialog extends StatefulWidget {
   const AddVideoDialog({super.key});
@@ -156,13 +155,7 @@ class _AddVideoDialogState extends State<AddVideoDialog>
                                     'description': provider.description,
                                     'metadata': videoMeta.toJson(),
                                   };
-                                  http.StreamedResponse response =
-                                      await provider.uploadVideo(jsonData);
-                                  if (response.statusCode == 200) {
-                                    // Refresh the list to get latest data
-                                    await provider.getAppGuideVideo();
-                                    Navigator.pop(context);
-                                  }
+                                  await provider.uploadVideo(jsonData);
                                 }
                               : null,
                           style: ElevatedButton.styleFrom(

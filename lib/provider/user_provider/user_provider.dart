@@ -157,10 +157,7 @@ class UserProvider extends ChangeNotifier {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer $token',
     };
-    var request = http.Request(
-      'GET',
-      Uri.parse('${Apis.BASE_URL}/admin/get_user_category'),
-    );
+    var request = http.Request('GET', Uri.parse(Apis.GET_USER_CATEGORY));
     request.headers.addAll(headers);
     http.StreamedResponse response = await request.send();
     final responseBody = await response.stream.bytesToString();
@@ -199,6 +196,10 @@ class UserProvider extends ChangeNotifier {
 
       notifyListeners(); // update UI
       print("Categories: $_userCategories");
+    } else if (response.statusCode == 401 ||
+        response.statusCode == 403 ||
+        response.statusCode == 423) {
+      AdminSharedPreferences().logout(message: "Session Expired");
     } else {
       print("Error: ${response.reasonPhrase}");
     }
@@ -215,9 +216,7 @@ class UserProvider extends ChangeNotifier {
       };
       var request = http.Request(
         'GET',
-        Uri.parse(
-          '${Apis.BASE_URL}/admin/get_user_by_userCategory?userCategory=$_selectedCategory',
-        ),
+        Uri.parse(Apis.GET_USER_BY_CATEGORY(_selectedCategory)),
       );
       request.headers.addAll(headers);
       http.StreamedResponse response = await request.send();
@@ -246,6 +245,10 @@ class UserProvider extends ChangeNotifier {
         }
 
         _usersByCategory = list;
+      } else if (response.statusCode == 401 ||
+          response.statusCode == 403 ||
+          response.statusCode == 423) {
+        AdminSharedPreferences().logout(message: "Session Expired");
       } else {
         print("Error: ${response.reasonPhrase}");
       }
@@ -422,6 +425,10 @@ class UserProvider extends ChangeNotifier {
         }
 
         notifyListeners();
+      } else if (response.statusCode == 401 ||
+          response.statusCode == 403 ||
+          response.statusCode == 423) {
+        AdminSharedPreferences().logout(message: "Session Expired");
       } else {
         print("Error: ${data['message'] ?? response.reasonPhrase}");
       }
@@ -441,7 +448,7 @@ class UserProvider extends ChangeNotifier {
     };
     var request = http.Request(
       'DELETE',
-      Uri.parse('${Apis.BASE_URL}/admin/delete_user_by_admin?userId=$userId'),
+      Uri.parse(Apis.DELETE_USER_BY_ADMIN(userId)),
     );
     request.headers.addAll(headers);
     http.StreamedResponse response = await request.send();
@@ -467,6 +474,10 @@ class UserProvider extends ChangeNotifier {
 
       notifyListeners();
       GetxNavigation.goBack(); // optional: only if you're closing a modal/screen
+    } else if (response.statusCode == 401 ||
+        response.statusCode == 403 ||
+        response.statusCode == 423) {
+      AdminSharedPreferences().logout(message: "Session Expired");
     } else {
       ToastMessage.error("Error", "Failed to delete/restore user");
       print(response.reasonPhrase);
@@ -481,10 +492,7 @@ class UserProvider extends ChangeNotifier {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer $token',
     };
-    var request = http.Request(
-      'GET',
-      Uri.parse('${Apis.BASE_URL}/admin/get_all_user'),
-    );
+    var request = http.Request('GET', Uri.parse(Apis.GET_ALL_USER));
     request.headers.addAll(headers);
     http.StreamedResponse response = await request.send();
     String res = await response.stream.bytesToString();
@@ -496,6 +504,10 @@ class UserProvider extends ChangeNotifier {
           .map((userJson) => UserModel.fromJson(userJson))
           .toList();
       notifyListeners(); // 🔔 Update UI
+    } else if (response.statusCode == 401 ||
+        response.statusCode == 403 ||
+        response.statusCode == 423) {
+      AdminSharedPreferences().logout(message: "Session Expired");
     } else {
       print("Error: ${data['message'] ?? response.reasonPhrase}");
     }
@@ -509,9 +521,7 @@ class UserProvider extends ChangeNotifier {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       };
-      final url = Uri.parse(
-        '${Apis.BASE_URL}/admin/user_active_inActive?userId=$userId',
-      );
+      final url = Uri.parse(Apis.USER_ACTIVE_INACTIVE(userId));
       final request = http.Request('POST', url);
       request.headers.addAll(headers);
       final response = await request.send();
@@ -530,6 +540,11 @@ class UserProvider extends ChangeNotifier {
         }
 
         return true;
+      } else if (response.statusCode == 401 ||
+          response.statusCode == 403 ||
+          response.statusCode == 423) {
+        AdminSharedPreferences().logout(message: "Session Expired");
+        return false;
       } else {
         ToastMessage.error("Error", "Failed to update user status");
         return false;

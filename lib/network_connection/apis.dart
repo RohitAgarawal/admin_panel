@@ -1,10 +1,11 @@
 import 'constants.dart';
 
 class Apis {
-  static const String BASE_URL = "https://api.bhavnika.shop/api";
-
-  // static const String BASE_URL = "http://localhost:3001/api";
+  //   static const String BASE_URL = "https://api.bhavnika.shop/api";
+  static const String BASE_URL = "http://localhost:3001/api";
   static const String BASE_URL_IMAGE = "https://api.bhavnika.shop";
+  //   static const String SOCKET_URL = "wss://api.bhavnika.shop/";
+  static const String SOCKET_URL = "ws://192.168.0.107:3001/";
 
   // static const String BASE_URL_IMAGE = "http://localhost:3001";
 
@@ -52,4 +53,18 @@ class Apis {
 
   static String DELETE_APP_GUIDE_VIDEO(String id) =>
       '$BASE_URL${Constants.DELETE_APP_GUIDE_VIDEO(id)}';
+
+  // about us
+  static const String GET_ABOUT_US = "$BASE_URL/about-us";
+  static const String UPDATE_ABOUT_US = "$BASE_URL/about-us";
+
+  // dashboard / user management
+  static const String GET_ALL_USER = "$BASE_URL/admin/get_all_user";
+  static const String GET_USER_CATEGORY = "$BASE_URL/admin/get_user_category";
+  static String GET_USER_BY_CATEGORY(String category) =>
+      "$BASE_URL/admin/get_user_by_userCategory?userCategory=$category";
+  static String DELETE_USER_BY_ADMIN(String userId) =>
+      "$BASE_URL/admin/delete_user_by_admin?userId=$userId";
+  static String USER_ACTIVE_INACTIVE(String userId) =>
+      "$BASE_URL/admin/user_active_inActive?userId=$userId";
 }

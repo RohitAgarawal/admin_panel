@@ -10,7 +10,6 @@ class TotalUserProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-
   int _categoryAUnverifiedPinCount = 0;
   int _categoryBOtpUnverifiedCount = 0;
   int get categoryAUnverifiedPinCount => _categoryAUnverifiedPinCount;
@@ -24,7 +23,7 @@ class TotalUserProvider extends ChangeNotifier {
   // report count
   int _totalReport = 0;
   int get totalReport => _totalReport;
-//total user
+  //total user
   int _totalUser = 0;
   int get totalUser => _totalUser;
   int _totalUserA = 0;
@@ -39,7 +38,7 @@ class TotalUserProvider extends ChangeNotifier {
   //verified user
   int _verifiedUser = 0;
   int get verifiedUser => _verifiedUser;
-   int _verifiedUserA = 0;
+  int _verifiedUserA = 0;
   int get verifiedUserA => _verifiedUserA;
   int _verifiedUserB = 0;
   int get verifiedUserB => _verifiedUserB;
@@ -84,23 +83,26 @@ class TotalUserProvider extends ChangeNotifier {
   int _disableUser2 = 0;
   int get disableUser2 => _disableUser2;
 
-
   set verifiedUser(int value) {
     _verifiedUser = value;
     notifyListeners();
   }
+
   set pendingUser(int value) {
     _pendingUser = value;
     notifyListeners();
   }
+
   set deletedUser(int value) {
     _deletedUser = value;
     notifyListeners();
   }
+
   set totalUser(int value) {
     _totalUser = value;
     notifyListeners();
   }
+
   set disableUser(int value) {
     _disableUser = value;
     notifyListeners();
@@ -119,19 +121,20 @@ class TotalUserProvider extends ChangeNotifier {
     _categoryBCount = value;
     notifyListeners();
   }
+
   int _category1ACount = 0;
   int get category1ACount => _category1ACount;
   set category1ACount(int value) {
     _category1ACount = value;
     notifyListeners();
   }
+
   int _category2ACount = 0;
   int get category2ACount => _category2ACount;
   set category2ACount(int value) {
     _category2ACount = value;
     notifyListeners();
   }
-
 
   int _totalProductCount = 0;
   int get totalProductCount => _totalProductCount;
@@ -150,30 +153,25 @@ class TotalUserProvider extends ChangeNotifier {
   int _totalProductE = 0;
   int get totalProductE => _totalProductE;
 
-
   Future<void> userCount() async {
     try {
       String token = await AdminSharedPreferences().getAuthToken();
       _isLoading = true;
       notifyListeners();
 
-      var request = http.Request(
-        'GET',
-        Uri.parse('${Apis.BASE_URL}/admin/get_all_user'),
+      final response = await http.get(
+        Uri.parse(Apis.GET_ALL_USER),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
       );
-      request.headers.addAll({
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      });
-
-      http.StreamedResponse response = await request.send();
-      final resString = await response.stream.bytesToString();
 
       print("🟢 Status Code: ${response.statusCode}");
-      print("🟢 Response Body: $resString");
+      print("🟢 Response Body: ${response.body}");
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> json = jsonDecode(resString);
+        final Map<String, dynamic> json = jsonDecode(response.body);
 
         if (json['success'] == true) {
           totalUser = json['totalUsers'] ?? 0;
@@ -225,9 +223,13 @@ class TotalUserProvider extends ChangeNotifier {
         } else {
           print("⚠️ API returned success: false");
         }
+      } else if (response.statusCode == 401 ||
+          response.statusCode == 403 ||
+          response.statusCode == 423) {
+        AdminSharedPreferences().logout(message: "Session Expired");
       } else {
         print("❌ Error: ${response.statusCode}");
-        print("❌ Response Body: $resString");
+        print("❌ Response Body: ${response.body}");
       }
     } catch (e) {
       print("❌ Exception occurred: $e");
@@ -236,7 +238,6 @@ class TotalUserProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-
 
   // Future<void> userCount() async {
   //
@@ -320,6 +321,4 @@ class TotalUserProvider extends ChangeNotifier {
   //     print(e);
   //   }
   // }
-
-
 }

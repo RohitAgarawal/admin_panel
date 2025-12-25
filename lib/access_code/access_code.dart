@@ -15,6 +15,7 @@ class AccessCode extends StatefulWidget {
 
 class _AccessCodeState extends State<AccessCode> {
   String searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -24,102 +25,219 @@ class _AccessCodeState extends State<AccessCode> {
     });
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   void showUserDialog(BuildContext context, List<dynamic> users) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        title: Text("Users with this PIN"),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: users.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.info_outline,
-                          size: 48,
-                          color: Colors.orangeAccent,
-                        ),
-                        SizedBox(height: 12),
-                        Text(
-                          "This PIN has not been used by any user yet!",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black54,
-                          ),
-                        ),
-                      ],
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        elevation: 0,
+        backgroundColor:
+            Colors.transparent, // Transparent to handle custom container
+        child: Container(
+          width: 500,
+          constraints: const BoxConstraints(maxHeight: 600),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Pin Users",
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                      letterSpacing: -0.5,
                     ),
                   ),
-                )
-              : ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: users.length,
-                  itemBuilder: (context, index) {
-                    final user = users[index];
-                    return InkWell(
-                      onTap: () {
-                        Navigator.pop(context); // Close the dialog
-                        print("User tapped: ${user['_id']}");
-                        GetxNavigation.next(
-                          UserDetailsScreen.routeName,
-                          arguments: user['_id'],
-                        );
-
-                        // Handle user tap if needed
-                      },
-                      child: Card(
-                        color: Colors.white,
-                        elevation: 2,
-                        margin: const EdgeInsets.symmetric(vertical: 6),
-                        child: ListTile(
-                          title: Text(
-                            "User Name: ${user['fName'][0]} ${user['mName'][0] ?? ''} ${user['lName'][0]}"
-                                .trim(),
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.pop(context),
+                    color: Colors.grey,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Divider(color: Colors.grey[200]),
+              const SizedBox(height: 16),
+              users.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.person_off_rounded,
+                                size: 48,
+                                color: Colors.orange[400],
+                              ),
                             ),
-                          ),
-                          subtitle: Text(
-                            "User Email${user['email'] ?? 'No Email'}",
-                            style: TextStyle(fontSize: 17),
-                          ),
-                          trailing: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                user['phone']?[0] ?? '',
-                                style: TextStyle(fontSize: 15),
+                            const SizedBox(height: 16),
+                            Text(
+                              "No Users Found",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[800],
                               ),
-                              SizedBox(height: 4),
-                              Text(
-                                "${user['area']?[0] ?? ''}, ${user['city']?[0] ?? ''}, ${user['state']?[0] ?? ''} - ${user['pinCode']?[0] ?? ''}",
-                                textAlign: TextAlign.end,
-                                style: TextStyle(fontSize: 13),
-                              ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              "This PIN hasn't been used by anyone yet.",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.grey[600]),
+                            ),
+                          ],
                         ),
                       ),
-                    );
-                  },
-                ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Close"),
+                    )
+                  : Flexible(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: users.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final user = users[index];
+                          final fName = user['fName']?.isNotEmpty == true
+                              ? user['fName'][0]
+                              : '';
+                          final lName = user['lName']?.isNotEmpty == true
+                              ? user['lName'][0]
+                              : '';
+                          final fullName = "$fName $lName".trim();
+                          final email = user['email'] ?? 'No Email';
+                          final phone = user['phone']?.isNotEmpty == true
+                              ? user['phone'][0]
+                              : 'N/A';
+
+                          return Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.pop(context);
+                                GetxNavigation.next(
+                                  UserDetailsScreen.routeName,
+                                  arguments: user['_id'],
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(16),
+                              hoverColor:
+                                  Colors.grey[50], // Subtle hover effect
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: Colors.grey.withOpacity(0.3),
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 48,
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.withOpacity(0.1),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        fName.isNotEmpty
+                                            ? fName[0].toUpperCase()
+                                            : 'U',
+                                        style: TextStyle(
+                                          color: Colors.blue[800],
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 18,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            fullName.isEmpty
+                                                ? 'Unknown User'
+                                                : fullName,
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            email,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey[600],
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          phone,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.grey[800],
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Icon(
+                                          Icons.chevron_right_rounded,
+                                          color: Colors.grey[400],
+                                          size: 20,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -127,43 +245,86 @@ class _AccessCodeState extends State<AccessCode> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8F9FD), // Softer background color
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(
-              decoration: InputDecoration(
-                hintText: "Search Access Code...",
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+            // --- Header & Search ---
+            Row(
+              children: [
+                const Text(
+                  "Access Codes",
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -1,
+                    color: Colors.black87,
+                  ),
                 ),
-              ),
-              onChanged: (value) {
-                setState(() {
-                  searchQuery = value;
-                });
-              },
+                const Spacer(),
+                Container(
+                  width: 380,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30), // Pill shape
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.08),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: "Search access codes...",
+                      hintStyle: TextStyle(
+                        color: Colors.grey[400],
+                        fontWeight: FontWeight.w500,
+                      ),
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.only(left: 16, right: 12),
+                        child: Icon(
+                          Icons.search_rounded,
+                          color: Colors.grey[400],
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: Colors.transparent,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        searchQuery = value;
+                      });
+                    },
+                  ),
+                ),
+              ],
             ),
-            SizedBox(height: 12),
-            Text(
-              "Access Code",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 10),
+            const SizedBox(height: 32),
+
+            // --- Content ---
             Expanded(
               child: Consumer<AccessCodeProvider>(
                 builder: (context, accessCodeProvider, child) {
                   if (accessCodeProvider.isLoading) {
-                    return Center(child: CircularProgressIndicator());
+                    return const Center(child: CircularProgressIndicator());
                   }
 
                   // 🔽 Sort and filter
                   List<AccessCodeModel> sortedCodes = List.from(
                     accessCodeProvider.accessCodes,
                   );
+                  // Sort by usage (most used first)
                   sortedCodes.sort((a, b) => b.useCount.compareTo(a.useCount));
+
                   if (searchQuery.isNotEmpty) {
                     sortedCodes = sortedCodes
                         .where(
@@ -174,336 +335,293 @@ class _AccessCodeState extends State<AccessCode> {
                         .toList();
                   }
 
-                  return ListView.builder(
-                    itemCount: sortedCodes.length,
-                    itemBuilder: (context, index) {
-                      final code = sortedCodes[index];
-                      return Card(
-                        color: Colors.white,
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Wrap(
-                            spacing: 10,
-                            runSpacing: 10,
-                            crossAxisAlignment: WrapCrossAlignment.start,
-                            alignment: WrapAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                "${index + 1}",
-                                textAlign: TextAlign.start,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontFeatures: [FontFeature.tabularFigures()],
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                "Code: ${code.code}",
-                                textAlign: TextAlign.start,
-                                style: TextStyle(
-                                  fontFeatures: [FontFeature.tabularFigures()],
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              Text(
-                                "Use Count: ${code.useCount}",
-                                textAlign: TextAlign.start,
-                                style: TextStyle(
-                                  fontFeatures: [FontFeature.tabularFigures()],
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              Text(
-                                "Remaining Count: ${code.maxUseCount - code.useCount}",
-                                textAlign: TextAlign.start,
-                                style: TextStyle(
-                                  fontFeatures: [FontFeature.tabularFigures()],
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              InkWell(
-                                onTap: () async {
-                                  final accessCodeProv =
-                                      Provider.of<AccessCodeProvider>(
-                                        context,
-                                        listen: false,
-                                      );
-                                  final users = await accessCodeProv
-                                      .getUserByAccessCode(code.code);
-
-                                  print(
-                                    "Code: ${code.code} => Users found: ${users?.length ?? 0}",
-                                  );
-
-                                  if (!context.mounted) return;
-
-                                  showUserDialog(context, users ?? []);
-                                },
-                                child: Text(
-                                  "Use Pin View",
-                                  textAlign: TextAlign.start,
-                                  style: TextStyle(
-                                    fontFeatures: [
-                                      FontFeature.tabularFigures(),
-                                    ],
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                            ],
+                  if (sortedCodes.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off_rounded,
+                            size: 80,
+                            color: Colors.grey[300],
                           ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/*class _AccessCodeState extends State<AccessCode> {
-  @override
-  void initState() {
-    // TODO: implement initState
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<AccessCodeProvider>(context, listen: false).getAccessCode();
-    });
-  }
-
-
-  void showUserDialog(BuildContext context, List<dynamic> users) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text("Users with this PIN"),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: users.length,
-            itemBuilder: (context, index) {
-              final user = users[index];
-              return Card(
-                elevation: 2,
-                margin: const EdgeInsets.symmetric(vertical: 6),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundImage: NetworkImage(
-                      "http://yourdomain.com${user['profileImage'][0]}",
-                    ),
-                  ),
-                  title: Text(
-                    "${user['fName'][0]} ${user['mName'][0] ?? ''} ${user['lName'][0]}".trim(),
-                  ),
-                  subtitle: Text(user['email'] ?? 'No Email'),
-                  trailing: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(user['phone'][0]),
-                      Text(user['state'][0]),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Close"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Text("Access Code"),
-            Expanded(
-              child: Consumer<AccessCodeProvider>(
-                builder: (context, accessCodeProvider, child) {
-                  if (accessCodeProvider.isLoading) {
-                    return Center(child: CircularProgressIndicator());
+                          const SizedBox(height: 24),
+                          Text(
+                            "No Access Codes Found",
+                            style: TextStyle(
+                              fontSize: 20,
+                              color: Colors.grey[500],
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
                   }
-                  return ListView.builder(
-                    itemCount: accessCodeProvider.accessCodes.length,
-                    itemBuilder: (context, index) {
-                      // show data code,useCount,maxUseCount and index for number
-                      return Card(
-                        color: Colors.white,
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                spacing: 5,
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "${index + 1}",
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    "Code: ${accessCodeProvider.accessCodes[index].code}",
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  Text(
-                                    "Use Count: ${accessCodeProvider.accessCodes[index].useCount}",
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  Text(
-                                    "Max Use Count: ${accessCodeProvider.accessCodes[index].maxUseCount}",
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              InkWell(
-                                onTap: () async {
-                                  final accessCode = accessCodeProvider.accessCodes[index].code;
-                                  final accessCodeProv = Provider.of<AccessCodeProvider>(context, listen: false);
-                                  sortedCodes.sort((a, b) {
-                                    // Used pins first
-                                    return b.useCount.compareTo(a.useCount);
-                                  });
-                                  // Step 1: Call the API
-                                  final users = await accessCodeProv.getUserByAccessCode(accessCode);
 
-                                  // Step 2: Ensure context is still valid
-                                  if (!context.mounted) return;
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final double gridWidth = constraints.maxWidth;
+                      const double maxCrossAxisExtent = 500;
+                      const double mainAxisSpacing = 24;
+                      const double crossAxisSpacing = 24;
 
-                                  // Step 3: Show dialog with user IDs
-                                  showDialog(
-                                    context: context,
-                                    builder: (_) => AlertDialog(
-                                      backgroundColor: Colors.white,
-                                      title: Text("Assign Pin Users"),
-                                      content: SizedBox(
-                                        width: double.maxFinite,
-                                        child: (users == null || users.isEmpty)
-                                            ? Center(
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(8.0),
-                                            child: Text(
-                                              "No assigned PINs found.",
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w500,
-                                                color: Colors.redAccent,
+                      // Calculate columns
+                      final int crossAxisCount =
+                          (gridWidth / maxCrossAxisExtent).ceil();
+
+                      // Calculate actual width of each card
+                      final double availableWidth =
+                          gridWidth - ((crossAxisCount - 1) * crossAxisSpacing);
+                      final double itemWidth = availableWidth / crossAxisCount;
+
+                      // Desired height ~240px to fit content comfortably without overflow
+                      // Ratio = Width / Height
+                      final double childAspectRatio = itemWidth / 240;
+
+                      return GridView.builder(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: crossAxisCount,
+                          mainAxisSpacing: mainAxisSpacing,
+                          crossAxisSpacing: crossAxisSpacing,
+                          childAspectRatio: childAspectRatio,
+                        ),
+                        padding: const EdgeInsets.only(bottom: 24),
+                        itemCount: sortedCodes.length,
+                        itemBuilder: (context, index) {
+                          final code = sortedCodes[index];
+                          final remaining = code.maxUseCount - code.useCount;
+                          final isDepleted = remaining <= 0;
+
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFFE0E0E0,
+                                  ).withOpacity(0.5),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(24),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: Stack(
+                                  children: [
+                                    Positioned.fill(
+                                      child: Container(
+                                        decoration: const BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: [
+                                              Colors.white,
+                                              Color(0xFFFAFAFA),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.all(20),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      Text(
+                                                        code.code,
+                                                        style: const TextStyle(
+                                                          fontSize:
+                                                              22, // Slightly larger than 18 for better read
+                                                          fontWeight:
+                                                              FontWeight.w800,
+                                                          letterSpacing: 0.5,
+                                                          color: Colors.black87,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 6),
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 10,
+                                                          vertical: 6,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: isDepleted
+                                                          ? Colors.red
+                                                                .withOpacity(
+                                                                  0.08,
+                                                                )
+                                                          : Colors.green
+                                                                .withOpacity(
+                                                                  0.08,
+                                                                ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            20,
+                                                          ),
+                                                    ),
+                                                    child: Text(
+                                                      isDepleted
+                                                          ? "Fully Used"
+                                                          : "Active",
+                                                      style: TextStyle(
+                                                        fontSize: 11,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        color: isDepleted
+                                                            ? Colors.red[700]
+                                                            : Colors.green[700],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              Container(
+                                                width: 28,
+                                                height: 28,
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey[100],
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                alignment: Alignment.center,
+                                                child: Text(
+                                                  "${index + 1}",
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.grey[500],
+                                                    fontSize: 11,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+
+                                          const Spacer(),
+
+                                          // Usage Stats
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 10,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF5F7FA),
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.spaceAround,
+                                              children: [
+                                                _buildStatItem(
+                                                  "Used",
+                                                  "${code.useCount}",
+                                                  Colors.black87,
+                                                ),
+                                                Container(
+                                                  width: 1,
+                                                  height: 20,
+                                                  color: Colors.grey[300],
+                                                ),
+                                                _buildStatItem(
+                                                  "Max",
+                                                  "${code.maxUseCount}",
+                                                  Colors.black87,
+                                                ),
+                                                Container(
+                                                  width: 1,
+                                                  height: 20,
+                                                  color: Colors.grey[300],
+                                                ),
+                                                _buildStatItem(
+                                                  "Left",
+                                                  "$remaining",
+                                                  isDepleted
+                                                      ? Colors.red
+                                                      : Colors.green,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+
+                                          const SizedBox(height: 16),
+
+                                          SizedBox(
+                                            width: double.infinity,
+                                            child: ElevatedButton.icon(
+                                              onPressed: () async {
+                                                final accessCodeProv =
+                                                    Provider.of<
+                                                      AccessCodeProvider
+                                                    >(context, listen: false);
+                                                final users =
+                                                    await accessCodeProv
+                                                        .getUserByAccessCode(
+                                                          code.code,
+                                                        );
+
+                                                if (!context.mounted) return;
+                                                showUserDialog(
+                                                  context,
+                                                  users ?? [],
+                                                );
+                                              },
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.black,
+                                                foregroundColor: Colors.white,
+                                                elevation: 0,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(14),
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 12,
+                                                    ),
+                                              ),
+                                              icon: const Icon(
+                                                Icons.people_outline_rounded,
+                                                size: 18,
+                                                color: Colors.white,
+                                              ),
+                                              label: const Text(
+                                                "View Users",
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
+                                                ),
                                               ),
                                             ),
                                           ),
-                                        )
-                                            : ListView.builder(
-                                          shrinkWrap: true,
-                                          itemCount: users.length,
-                                          itemBuilder: (context, index) {
-                                            final user = users[index];
-                                            return Card(
-                                              color: Colors.white,
-                                              elevation: 2,
-                                              margin: const EdgeInsets.symmetric(vertical: 8),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(12),
-                                              ),
-                                              child: Padding(
-                                                padding: const EdgeInsets.all(16.0),
-                                                child: Row(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Icon(Icons.person, size: 30, color: Colors.blueAccent),
-                                                    SizedBox(width: 12),
-                                                    Expanded(
-                                                      child: Column(
-                                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                                        children: [
-                                                          Text(
-                                                            "#${index + 1}",
-                                                            style: TextStyle(
-                                                              fontWeight: FontWeight.bold,
-                                                              fontSize: 14,
-                                                              color: Colors.deepPurple,
-                                                            ),
-                                                          ),
-                                                          SizedBox(height: 6),
-                                                          Text(
-                                                            "ID: ${user['_id'] ?? 'N/A'}",
-                                                            style: TextStyle(
-                                                              fontWeight: FontWeight.w600,
-                                                              fontSize: 14,
-                                                              color: Colors.grey[700],
-                                                            ),
-                                                          ),
-                                                          SizedBox(height: 6),
-                                                          Text(
-                                                            "Name: ${user['fName']?[0] ?? ''} ${user['lName']?[0] ?? ''}",
-                                                            style: TextStyle(
-                                                              fontSize: 16,
-                                                              fontWeight: FontWeight.bold,
-                                                              color: Colors.black87,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        ),
+                                        ],
                                       ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () => Navigator.pop(context),
-                                          child: Text("Close"),
-                                        ),
-                                      ],
                                     ),
-                                  );
-
-
-                                },
-                                child: Text(
-                                  "Use Pin View",
-                                  style: TextStyle(fontSize: 16),
+                                  ],
                                 ),
-                              )
-
-
-                            ],
-                          ),
-                        ),
+                              ),
+                            ),
+                          );
+                        },
                       );
                     },
                   );
@@ -515,4 +633,30 @@ class _AccessCodeState extends State<AccessCode> {
       ),
     );
   }
-}*/
+
+  Widget _buildStatItem(String label, String value, Color valueColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[500],
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: valueColor,
+          ),
+        ),
+      ],
+    );
+  }
+}

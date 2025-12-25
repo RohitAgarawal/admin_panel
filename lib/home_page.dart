@@ -10,6 +10,7 @@ import 'package:admin_panel/feature_request/feature_request_screen.dart';
 import 'package:admin_panel/screens/rating.dart';
 import 'package:admin_panel/app_use_guide/screen/app_use_guide_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:admin_panel/support_chat/support_chat_list_screen.dart';
 import 'package:provider/provider.dart';
 
 import 'dashboard/dashboard.dart';
@@ -35,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const AppVersion(),
     const FeatureRequestScreen(),
     const Rating(),
-    const Center(child: Text("Chat Under Development")),
+    const SupportChatListScreen(),
     const AboutUsScreen(),
     const AppUseGuideScreen(),
   ];

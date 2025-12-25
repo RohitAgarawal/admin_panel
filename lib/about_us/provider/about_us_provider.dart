@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:admin_panel/local_Storage/admin_shredPreferences.dart';
 import 'package:admin_panel/network_connection/apis.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -22,8 +23,16 @@ class AboutUsProvider extends ChangeNotifier {
     _error = '';
     notifyListeners();
 
+    final url = Uri.parse(Apis.GET_ABOUT_US);
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/about-us'));
+      String token = await AdminSharedPreferences().getAuthToken();
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -32,6 +41,10 @@ class AboutUsProvider extends ChangeNotifier {
         } else {
           _error = 'No about us data found';
         }
+      } else if (response.statusCode == 401 ||
+          response.statusCode == 403 ||
+          response.statusCode == 423) {
+        AdminSharedPreferences().logout(message: "Session Expired");
       } else {
         _error = 'Failed to load about us data: ${response.reasonPhrase}';
       }
@@ -49,11 +62,14 @@ class AboutUsProvider extends ChangeNotifier {
     _error = '';
     notifyListeners();
 
+    final url = Uri.parse(Apis.UPDATE_ABOUT_US);
     try {
+      String token = await AdminSharedPreferences().getAuthToken();
       final response = await http.put(
-        Uri.parse('$_baseUrl/about-us'),
+        url,
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
         },
         body: json.encode(aboutUs.toJson()),
       );
@@ -67,6 +83,11 @@ class AboutUsProvider extends ChangeNotifier {
           _error = 'No data returned after update';
           return false;
         }
+      } else if (response.statusCode == 401 ||
+          response.statusCode == 403 ||
+          response.statusCode == 423) {
+        AdminSharedPreferences().logout(message: "Session Expired");
+        return false;
       } else {
         _error = 'Failed to update about us data: ${response.reasonPhrase}';
         return false;

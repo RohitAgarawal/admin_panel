@@ -63,6 +63,10 @@ class FeatureRequestProvider extends ChangeNotifier {
         Map<String, dynamic> jsonData = jsonDecode(responseBody);
         _featureRequestData = FeatureRequestDataListModel.fromJson(jsonData);
         notifyListeners();
+      } else if (response.statusCode == 401 ||
+          response.statusCode == 403 ||
+          response.statusCode == 423) {
+        AdminSharedPreferences().logout(message: "Session Expired");
       } else {
         _setError(response.reasonPhrase ?? 'Failed to load feature requests');
       }
@@ -116,6 +120,10 @@ class FeatureRequestProvider extends ChangeNotifier {
           );
         }
         await getAllFeatureRequest();
+      } else if (response.statusCode == 401 ||
+          response.statusCode == 403 ||
+          response.statusCode == 423) {
+        AdminSharedPreferences().logout(message: "Session Expired");
       } else {
         ToastMessage.error(
           "Error",

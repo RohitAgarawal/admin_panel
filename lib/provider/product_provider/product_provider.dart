@@ -22,7 +22,6 @@ import '../../model/product_model/smart_phone_model.dart';
 import '../../navigation/getX_navigation.dart';
 
 class ProductProvider extends ChangeNotifier {
-
   bool _isLoading = false;
   bool get isLoading => _isLoading;
   List<ProductModel> _allProducts = [];
@@ -70,7 +69,7 @@ class ProductProvider extends ChangeNotifier {
   String get getSelectedCategory => _selectedCategory;
 
   void setSelectedCategory(String value) {
-    if(value == _selectedCategory) {
+    if (value == _selectedCategory) {
       _selectedCategory = "";
       notifyListeners();
       return; // No change, so do nothing
@@ -78,6 +77,7 @@ class ProductProvider extends ChangeNotifier {
     _selectedCategory = value;
     notifyListeners();
   }
+
   int countByCategory(String category) {
     return _allProducts.where((p) => p.category == category).length;
   }
@@ -89,7 +89,7 @@ class ProductProvider extends ChangeNotifier {
     int countC = categoryCount.countForC;
     int countD = categoryCount.countForD;
     int countE = categoryCount.countForE;
-    return (A:countA,B:countB,C:countC,D:countD,E:countE);
+    return (A: countA, B: countB, C: countC, D: countD, E: countE);
   }
 
   List<String> nameList = [];
@@ -97,36 +97,37 @@ class ProductProvider extends ChangeNotifier {
     nameList = _name as List<String>;
     notifyListeners();
   }
+
   void setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
   }
+
   void setProducts(List<ProductModel> products) {
     _allProducts = products;
     _filteredProducts = products;
     notifyListeners();
   }
 
-
   Future<void> getProductType() async {
     String token = await AdminSharedPreferences().getAuthToken();
     var headers = {
       'Content-Type': 'application/json',
-      'Authorization' : 'Bearer $token'
+      'Authorization': 'Bearer $token',
     };
     var request = http.Request('GET', Uri.parse(Apis.PRODUCT_TYPE));
     request.headers.addAll(headers);
     http.StreamedResponse response = await request.send();
     String responseBody = await response.stream.bytesToString();
     print(responseBody);
-    Map<String,dynamic> resJson = json.decode(responseBody);
+    Map<String, dynamic> resJson = json.decode(responseBody);
     List<ProductTypeModel> tempList = [];
     if (response.statusCode == 200) {
       for (var item in resJson['data']) {
         tempList.add(ProductTypeModel.fromJson(item));
       }
       products = tempList;
-      if(products.isNotEmpty) {
+      if (products.isNotEmpty) {
         // Preserve category filter when fetching products
         if (_selectedCategory.isNotEmpty) {
           fetchProducts(products[0].id, category: _selectedCategory);
@@ -135,13 +136,22 @@ class ProductProvider extends ChangeNotifier {
         }
       }
       notifyListeners();
+    } else if (response.statusCode == 401 ||
+        response.statusCode == 403 ||
+        response.statusCode == 423) {
+      AdminSharedPreferences().logout(message: "Session Expired");
     } else {
       print(response.reasonPhrase);
     }
   }
 
-  Future<void> fetchProducts(String productTypeId, {String category = ""}) async {
-    final url = Uri.parse('${Apis.BASE_URL}/admin/get_product_with_type?productTypeId=$productTypeId&category=$category');
+  Future<void> fetchProducts(
+    String productTypeId, {
+    String category = "",
+  }) async {
+    final url = Uri.parse(
+      '${Apis.BASE_URL}/admin/get_product_with_type?productTypeId=$productTypeId&category=$category',
+    );
 
     try {
       String token = await AdminSharedPreferences().getAuthToken();
@@ -164,11 +174,17 @@ class ProductProvider extends ChangeNotifier {
         if (responseData.containsKey('products')) {
           List<ProductModel> tempProducts = [];
           responseData['products'].forEach((modelName, productCategoryData) {
-            if (productCategoryData is Map && productCategoryData.containsKey('items')) {
+            if (productCategoryData is Map &&
+                productCategoryData.containsKey('items')) {
               List productList = productCategoryData['items'];
-              tempProducts.addAll(productList.map((item) {
-                return getProductByModelName(modelName, item);
-              }).whereType<ProductModel>().toList());
+              tempProducts.addAll(
+                productList
+                    .map((item) {
+                      return getProductByModelName(modelName, item);
+                    })
+                    .whereType<ProductModel>()
+                    .toList(),
+              );
             }
           });
 
@@ -176,7 +192,9 @@ class ProductProvider extends ChangeNotifier {
           print("✅ Loaded Products: $tempProducts");
 
           if (category.isNotEmpty) {
-            _filteredProducts = _allProducts.where((p) => p.category == category).toList();
+            _filteredProducts = _allProducts
+                .where((p) => p.category == category)
+                .toList();
           } else {
             _filteredProducts = List.from(_allProducts);
           }
@@ -186,6 +204,10 @@ class ProductProvider extends ChangeNotifier {
           print('⚠️ Error: API response format is incorrect.');
           setLoading(false);
         }
+      } else if (response.statusCode == 401 ||
+          response.statusCode == 403 ||
+          response.statusCode == 423) {
+        AdminSharedPreferences().logout(message: "Session Expired");
       } else {
         print('❌ Failed to load products. Status: ${response.statusCode}');
         print('❌ Response body: ${response.body}');
@@ -246,13 +268,16 @@ class ProductProvider extends ChangeNotifier {
   //   }
   // }
 
-  ProductModel getProductByModelName(String modelName,Map<String,dynamic> item){
+  ProductModel getProductByModelName(
+    String modelName,
+    Map<String, dynamic> item,
+  ) {
     if (modelName == "Bike") {
       return BikeModel.fromJson(item);
     } else if (modelName == "Car") {
-      return  CarModel.fromJson(item);
+      return CarModel.fromJson(item);
     } else if (modelName == "book_sport_hobby") {
-    return  BookModel.fromJson(item);
+      return BookModel.fromJson(item);
     } else if (modelName == "electronic") {
       return ElectronicsModel.fromJson(item);
     } else if (modelName == "furniture") {
@@ -269,13 +294,12 @@ class ProductProvider extends ChangeNotifier {
       return OtherModel.fromJson(item);
     } else if (modelName == "property") {
       return PropertyModel.fromJson(item);
-    }
-    else {
+    } else {
       throw Exception('Unknown model name: $modelName');
     }
   }
 
-  Future<void> fetchProductDetails(String productId, String modelName) async{
+  Future<void> fetchProductDetails(String productId, String modelName) async {
     try {
       String token = await AdminSharedPreferences().getAuthToken();
       print(Apis.GET_PRODUCT_BY_ID(productId, modelName));
@@ -289,7 +313,6 @@ class ProductProvider extends ChangeNotifier {
 
       var request = http.Request('GET', url);
       request.headers.addAll(headers);
-
 
       http.StreamedResponse streamedResponse = await request.send();
       http.Response response = await http.Response.fromStream(streamedResponse);
@@ -338,6 +361,10 @@ class ProductProvider extends ChangeNotifier {
           _property.add(PropertyModel.fromJson(productData));
         }
         notifyListeners();
+      } else if (response.statusCode == 401 ||
+          response.statusCode == 403 ||
+          response.statusCode == 423) {
+        AdminSharedPreferences().logout(message: "Session Expired");
       } else {
         print('Failed to load product: ${response.reasonPhrase}');
       }
@@ -346,14 +373,13 @@ class ProductProvider extends ChangeNotifier {
     } finally {
       setLoading(false);
     }
-
   }
 
-  Future<void> updateProduct(Map<String,dynamic> body)async{
+  Future<void> updateProduct(Map<String, dynamic> body) async {
     String token = await AdminSharedPreferences().getAuthToken();
     var headers = {
       'Content-Type': 'application/json',
-      'Authorization' : 'Bearer $token'
+      'Authorization': 'Bearer $token',
     };
     var request = http.Request('PUT', Uri.parse(Apis.UPDATE_PRODUCT));
     request.body = json.encode(body);
@@ -405,11 +431,14 @@ class ProductProvider extends ChangeNotifier {
       print('Product updated successfully');
       print(jsonResponse);
       GetxNavigation.goBack();
-     ToastMessage.success("Success","Product updated successfully");
+      ToastMessage.success("Success", "Product updated successfully");
 
       print(response.reasonPhrase);
-    }
-    else {
+    } else if (response.statusCode == 401 ||
+        response.statusCode == 403 ||
+        response.statusCode == 423) {
+      AdminSharedPreferences().logout(message: "Session Expired");
+    } else {
       print('Failed to update product');
       ToastMessage.error("Error", "Failed to update product");
       print(response.reasonPhrase);
@@ -434,11 +463,14 @@ class ProductProvider extends ChangeNotifier {
       final responseBody = await response.stream.bytesToString();
       final jsonResponse = jsonDecode(responseBody);
       if (response.statusCode == 200) {
-
         ToastMessage.success(
           "Deleted",
           jsonResponse['message'] ?? "Product deleted successfully",
         );
+      } else if (response.statusCode == 401 ||
+          response.statusCode == 403 ||
+          response.statusCode == 423) {
+        AdminSharedPreferences().logout(message: "Session Expired");
       } else {
         final responseBody = await response.stream.bytesToString();
         final jsonResponse = jsonDecode(responseBody);
@@ -455,13 +487,16 @@ class ProductProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteProductImage(Map<String,dynamic> body) async {
+  Future<void> deleteProductImage(Map<String, dynamic> body) async {
     String token = await AdminSharedPreferences().getAuthToken();
     var headers = {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer $token',
     };
-    var request = http.Request('DELETE', Uri.parse(Apis.PRODUCT_IMAGE_DELETE_BY_USER));
+    var request = http.Request(
+      'DELETE',
+      Uri.parse(Apis.PRODUCT_IMAGE_DELETE_BY_USER),
+    );
     request.body = json.encode(body);
     request.headers.addAll(headers);
 
@@ -473,19 +508,25 @@ class ProductProvider extends ChangeNotifier {
       // ProductProvider productProvider = Provider.of<ProductProvider>(Get.context!, listen:false);
       // productProvider.addUserProduct();
       notifyListeners();
-    }
-    else {
+    } else if (response.statusCode == 401 ||
+        response.statusCode == 403 ||
+        response.statusCode == 423) {
+      AdminSharedPreferences().logout(message: "Session Expired");
+    } else {
       print(response.reasonPhrase);
     }
   }
 
-  Future<void> product_active_inactive(Map<String,dynamic> body) async{
+  Future<void> product_active_inactive(Map<String, dynamic> body) async {
     String token = await AdminSharedPreferences().getAuthToken();
     var headers = {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer $token',
     };
-    var request = http.Request('POST', Uri.parse('${Apis.BASE_URL}/products/product-active-inactive'));
+    var request = http.Request(
+      'POST',
+      Uri.parse('${Apis.BASE_URL}/products/product-active-inactive'),
+    );
     request.body = json.encode(body);
     request.headers.addAll(headers);
     print(body);
@@ -535,8 +576,11 @@ class ProductProvider extends ChangeNotifier {
       }
       ToastMessage.success("Success", "Product active/inactive successfully");
       notifyListeners();
-    }
-    else {
+    } else if (response.statusCode == 401 ||
+        response.statusCode == 403 ||
+        response.statusCode == 423) {
+      AdminSharedPreferences().logout(message: "Session Expired");
+    } else {
       ToastMessage.error("Error", "Failed to active/inactive product");
       print(response.reasonPhrase);
     }
@@ -548,11 +592,13 @@ class ProductProvider extends ChangeNotifier {
       String token = await AdminSharedPreferences().getAuthToken();
       var headers = {
         'Content-Type': 'application/json',
-        'Authorization' : 'Bearer $token'
+        'Authorization': 'Bearer $token',
       };
       var request = http.Request(
         'GET',
-        Uri.parse('${Apis.BASE_URL}/admin/get-product-by-userId?userId=$userId'),
+        Uri.parse(
+          '${Apis.BASE_URL}/admin/get-product-by-userId?userId=$userId',
+        ),
       );
       print("Url:---$request");
       request.headers.addAll(headers);
@@ -600,11 +646,15 @@ class ProductProvider extends ChangeNotifier {
               tempProducts.add(product);
             }
           }
-           setProducts(tempProducts);
-          notifyListeners();// ✅ Your method to update UI
+          setProducts(tempProducts);
+          notifyListeners(); // ✅ Your method to update UI
         } else {
           print('Error: "products" key missing in response.');
         }
+      } else if (response.statusCode == 401 ||
+          response.statusCode == 403 ||
+          response.statusCode == 423) {
+        AdminSharedPreferences().logout(message: "Session Expired");
       } else {
         print('Failed to load products: ${response.statusCode}');
       }
@@ -615,17 +665,28 @@ class ProductProvider extends ChangeNotifier {
     }
   }
 
-
   //search product but does not work properly
-  Future<void> searchProduct(String searchQuery, String selectedCategory,String modelName) async {
+  Future<void> searchProduct(
+    String searchQuery,
+    String selectedCategory,
+    String modelName,
+  ) async {
     _isLoading = true;
     notifyListeners();
 
     try {
+      String token = await AdminSharedPreferences().getAuthToken();
+      var headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
       final request = http.Request(
         'GET',
-        Uri.parse('${Apis.BASE_URL}/products/get?query=$searchQuery&categories=$selectedCategory&modelName=$modelName'),
+        Uri.parse(
+          '${Apis.BASE_URL}/products/get?query=$searchQuery&categories=$selectedCategory&modelName=$modelName',
+        ),
       );
+      request.headers.addAll(headers);
 
       final response = await request.send();
       final res = await response.stream.bytesToString();
@@ -637,11 +698,18 @@ class ProductProvider extends ChangeNotifier {
         List<ProductModel> tempList = [];
         resJson['data'].forEach((product) {
           tempList.add(
-            createProductFromJson(product['productType']['modelName'].toString().toLowerCase(), product),
+            createProductFromJson(
+              product['productType']['modelName'].toString().toLowerCase(),
+              product,
+            ),
           );
         });
 
         _filteredProducts = tempList;
+      } else if (response.statusCode == 401 ||
+          response.statusCode == 403 ||
+          response.statusCode == 423) {
+        AdminSharedPreferences().logout(message: "Session Expired");
       } else {
         print("❌ Error: ${response.reasonPhrase} (${response.statusCode})");
       }
@@ -652,10 +720,13 @@ class ProductProvider extends ChangeNotifier {
     _isLoading = false;
     notifyListeners();
   }
-  ProductModel createProductFromJson(String category, Map<String, dynamic> json) {
+
+  ProductModel createProductFromJson(
+    String category,
+    Map<String, dynamic> json,
+  ) {
     print(category);
     switch (category) {
-
       case 'car':
         return CarModel.fromJson(json);
       case 'bike':
@@ -684,5 +755,4 @@ class ProductProvider extends ChangeNotifier {
         throw Exception('Unknown product type: $category');
     }
   }
-
 }

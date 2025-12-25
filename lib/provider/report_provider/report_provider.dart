@@ -47,6 +47,10 @@ class ReportProvider extends ChangeNotifier {
         _reports = (jsonData['data'] as List<dynamic>).map((e) {
           return ReportModel.fromJson(e as Map<String, dynamic>);
         }).toList();
+      } else if (response.statusCode == 401 ||
+          response.statusCode == 403 ||
+          response.statusCode == 423) {
+        AdminSharedPreferences().logout(message: "Session Expired");
       } else {
         print("Error: ${response.reasonPhrase}");
       }
@@ -79,6 +83,11 @@ class ReportProvider extends ChangeNotifier {
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonData['data'];
         _selectedReport = ReportModel.fromJson(data);
+      } else if (response.statusCode == 401 ||
+          response.statusCode == 403 ||
+          response.statusCode == 423) {
+        AdminSharedPreferences().logout(message: "Session Expired");
+        return null;
       } else {
         print("Error: ${response.reasonPhrase}");
         return null;
@@ -110,6 +119,10 @@ class ReportProvider extends ChangeNotifier {
       if (response.statusCode == 200) {
         final jsonData = json.decode(responseBody);
         _reportCount = jsonData['count'] ?? 0;
+      } else if (response.statusCode == 401 ||
+          response.statusCode == 403 ||
+          response.statusCode == 423) {
+        AdminSharedPreferences().logout(message: "Session Expired");
       } else {
         print("Error: ${response.reasonPhrase}");
       }
@@ -154,6 +167,11 @@ class ReportProvider extends ChangeNotifier {
           await reportsDetailsByReportId(reportId);
         }
         return true;
+      } else if (response.statusCode == 401 ||
+          response.statusCode == 403 ||
+          response.statusCode == 423) {
+        AdminSharedPreferences().logout(message: "Session Expired");
+        return false;
       } else {
         print("Error: ${response.reasonPhrase}");
         return false;
@@ -203,6 +221,11 @@ class ReportProvider extends ChangeNotifier {
 
         // Use the service to download
         return await ExcelExportService.exportReportsToExcel(exportData);
+      } else if (response.statusCode == 401 ||
+          response.statusCode == 403 ||
+          response.statusCode == 423) {
+        AdminSharedPreferences().logout(message: "Session Expired");
+        return false;
       } else {
         print("Error fetching reports for export: ${response.reasonPhrase}");
         return false;
